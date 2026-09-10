@@ -20,6 +20,25 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Persistencia del catálogo (`data/`)
+
+El catálogo se persiste en `data/instruments.json` (gitignored), manejado por
+`src/lib/store/instruments.ts`:
+
+- **Seed automático**: en el primer acceso, si el archivo no existe o está
+  corrupto (JSON inválido / shape incorrecto), el store se regenera desde
+  `src/lib/seed.ts` (reseed controlado; la API nunca crashea por datos
+  faltantes).
+- **Escrituras**: serializadas con un mutex en memoria (promise chain) para
+  evitar write races entre requests concurrentes. Tras cada escritura se
+  revalidan `/` y `/producto/[id]` (`revalidatePath`).
+- **LÍMITE — single-process**: el store es un archivo local del proceso que
+  corre la app. Funciona en dev y en un VPS de instancia única, pero NO en
+  serverless multi-instancia (Vercel u otros): ahí el filesystem no es
+  compartido entre instancias y cada una tendría su propio archivo. Si algún
+  día se escala a multi-instancia, migrar la persistencia a una DB real
+  (SQLite/Postgres) dejando la API como está.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
