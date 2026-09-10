@@ -1,26 +1,47 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Plus, Trash2, Edit2, X, Loader2 } from "lucide-react";
-import { Instrument, CATEGORY_LABELS, CONDITION_LABELS } from "@/types";
+import {
+  Instrument,
+  Condition,
+  InstrumentCategory,
+  CATEGORY_LABELS,
+  CONDITION_LABELS,
+} from "@/types";
 import { formatPrice } from "@/lib/utils";
+import { validateInstrument, CATEGORIES, CONDITIONS } from "@/lib/catalog";
 import Logo from "@/components/layout/Logo";
 
-const CATEGORIES = [
-  "guitarra-electrica", 
-  "guitarra-acustica", 
-  "guitarra-clasica",
-  "bajo-electrico",
-  "bajo-acustico",
-  "otro-instrumento",
-  "pedal",
-  "accesorio",
-  "parte"
-];
+interface FormState {
+  name: string;
+  description: string;
+  price: string;
+  image: string;
+  category: InstrumentCategory;
+  brand: string;
+  model: string;
+  featured: boolean;
+  condition: Condition;
+  offerPrice: string;
+  discountPercentage: string;
+}
 
-const CONDITIONS = ["nuevo", "usado", "usado-casi-nuevo", "reacondicionado"];
+const EMPTY_FORM: FormState = {
+  name: "",
+  description: "",
+  price: "",
+  image: "",
+  category: "guitarra-electrica",
+  brand: "",
+  model: "",
+  featured: false,
+  condition: "nuevo",
+  offerPrice: "",
+  discountPercentage: "",
+};
 
 export default function AdminPage() {
   const router = useRouter();
@@ -29,107 +50,141 @@ export default function AdminPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
 
-  // Form state
-  const [form, setForm] = useState({
-    name: "",
-    description: "",
-    price: "",
-    image: "",
-    category: "guitarra-electrica",
-    brand: "",
-    model: "",
-    featured: false,
-    condition: "nuevo" as const,
-    offerPrice: "",
-    discountPercentage: "",
-  });
-
-  // Check auth
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
-    try {
-      const res = await fetch("/api/auth");
-      if (!res.ok) {
-        router.push("/admin/login");
-      } else {
-        loadInstruments();
-      }
-    } catch {
-      router.push("/admin/login");
-    }
-  };
-
-  const loadInstruments = async () => {
+  const loadInstruments = useCallback(async () => {
     try {
       const res = await fetch("/api/instruments");
       const data = await res.json();
       setInstruments(data);
-    } catch (error) {
-      console.error("Error loading instruments:", error);
-    } finally {
-      setLoading(false);
+    } catch (loadError) {
+      console.error("Error loading instruments:", loadError);
     }
-  };
+  }, []);
+
+  // Auth check: una sola vez al montar (single redirect máx, sin loop).
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/auth");
+        if (!res.ok) {
+          router.push("/admin/login");
+          return;
+        }
+        await loadInstruments();
+      } catch {
+        router.push("/admin/login");
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [router, loadInstruments]);
 
   const handleLogout = async () => {
     await fetch("/api/auth", { method: "DELETE" });
     router.push("/admin/login");
   };
 
+  const resetForm = () => {
+    setForm(EMPTY_FORM);
+    setError("");
+    setShowForm(false);
+    setEditingId(null);
+  };
+
+  const startEdit = (instrument: Instrument) => {
+    setEditingId(instrument.id);
+    setError("");
+    setForm({
+      name: instrument.name,
+      description: instrument.description,
+      price: String(instrument.price),
+      image: instrument.image,
+      category: instrument.category,
+      brand: instrument.brand,
+      model: instrument.model ?? "",
+      featured: instrument.featured ?? false,
+      condition: instrument.condition ?? "nuevo",
+      offerPrice:
+        instrument.offerPrice !== undefined ? String(instrument.offerPrice) : "",
+      discountPercentage:
+        instrument.discountPercentage !== undefined
+          ? String(instrument.discountPercentage)
+          : "",
+    });
+    setShowForm(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    setError("");
+
+    // Validación client-side con el MISMO validador del server
+    // (validateInstrument): name/brand/model/price obligatorios,
+    // price > 0, offerPrice < price, category/condition válidas.
+    const result = validateInstrument(form);
+    if (!result.ok) {
+      setError(result.errors.join(". "));
+      setSaving(false);
+      return;
+    }
+
+    // Branch correcto: editingId → PUT (nunca duplica), si no → POST.
+    const url = editingId
+      ? `/api/instruments/${editingId}`
+      : "/api/instruments";
+    const method = editingId ? "PUT" : "POST";
 
     try {
-      const res = await fetch("/api/instruments", {
-        method: "POST",
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(result.instrument),
       });
+      const data = await res.json().catch(() => null);
 
-      if (res.ok) {
-        const newInstrument = await res.json();
-        setInstruments([...instruments, newInstrument]);
-        resetForm();
+      if (!res.ok) {
+        setError(data?.error || "Error al guardar el instrumento");
+        return;
       }
-    } catch (error) {
-      console.error("Error saving:", error);
+
+      if (editingId) {
+        setInstruments(
+          instruments.map((item) => (item.id === editingId ? data : item))
+        );
+      } else {
+        setInstruments([...instruments, data]);
+      }
+      resetForm();
+    } catch (submitError) {
+      console.error("Error saving:", submitError);
+      setError("Error de conexión");
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Estás seguro de eliminar este instrumento?")) return;
+    if (!window.confirm("¿Estás seguro de eliminar este instrumento?")) return;
 
     try {
-      await fetch(`/api/instruments/${id}`, { method: "DELETE" });
-      setInstruments(instruments.filter((i) => i.id !== id));
-    } catch (error) {
-      console.error("Error deleting:", error);
+      const res = await fetch(`/api/instruments/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setError(data?.error || "Error al eliminar el instrumento");
+        return;
+      }
+      setInstruments(instruments.filter((item) => item.id !== id));
+    } catch (deleteError) {
+      console.error("Error deleting:", deleteError);
+      setError("Error de conexión");
     }
-  };
-
-  const resetForm = () => {
-    setForm({
-      name: "",
-      description: "",
-      price: "",
-      image: "",
-      category: "guitarra-electrica",
-      brand: "",
-      model: "",
-      featured: false,
-      condition: "nuevo",
-      offerPrice: "",
-      discountPercentage: "",
-    });
-    setShowForm(false);
-    setEditingId(null);
   };
 
   if (loading) {
@@ -149,7 +204,10 @@ export default function AdminPage() {
             <Logo />
             <div className="flex items-center gap-4">
               <button
-                onClick={() => setShowForm(true)}
+                onClick={() => {
+                  setError("");
+                  setShowForm(true);
+                }}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-brand-orange text-brand-black font-semibold rounded-lg hover:bg-brand-orange-hover transition-colors"
               >
                 <Plus size={20} />
@@ -170,6 +228,12 @@ export default function AdminPage() {
         <h1 className="text-2xl font-bold text-white mb-8">
           Gestión de Instrumentos ({instruments.length})
         </h1>
+
+        {error && !showForm && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400 text-sm">
+            {error}
+          </div>
+        )}
 
         {/* Instruments Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -203,23 +267,7 @@ export default function AdminPage() {
                 </div>
                 <div className="mt-4 flex gap-2">
                   <button
-                    onClick={() => {
-                      setEditingId(instrument.id);
-                      setForm({
-                        name: instrument.name,
-                        description: instrument.description,
-                        price: String(instrument.price),
-                        image: instrument.image,
-                        category: instrument.category,
-                        brand: instrument.brand,
-                        model: instrument.model || "",
-                        featured: instrument.featured || false,
-                        condition: (instrument.condition || "nuevo") as any,
-                        offerPrice: instrument.offerPrice ? String(instrument.offerPrice) : "",
-                        discountPercentage: instrument.discountPercentage ? String(instrument.discountPercentage) : "",
-                      });
-                      setShowForm(true);
-                    }}
+                    onClick={() => startEdit(instrument)}
                     className="flex-1 inline-flex items-center justify-center gap-1 py-2 bg-zinc-700 text-white text-sm rounded-lg hover:bg-zinc-600 transition-colors"
                   >
                     <Edit2 size={14} />
@@ -228,6 +276,7 @@ export default function AdminPage() {
                   <button
                     onClick={() => handleDelete(instrument.id)}
                     className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
+                    aria-label={`Eliminar ${instrument.name}`}
                   >
                     <Trash2 size={14} />
                   </button>
@@ -255,12 +304,19 @@ export default function AdminPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              {error && (
+                <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400 text-sm">
+                  {error}
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-zinc-300 mb-2">
+                  <label htmlFor="name" className="block text-sm font-medium text-zinc-300 mb-2">
                     Nombre
                   </label>
                   <input
+                    id="name"
                     type="text"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -270,10 +326,11 @@ export default function AdminPage() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-zinc-300 mb-2">
+                  <label htmlFor="description" className="block text-sm font-medium text-zinc-300 mb-2">
                     Descripción
                   </label>
                   <textarea
+                    id="description"
                     value={form.description}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
                     rows={3}
@@ -283,11 +340,14 @@ export default function AdminPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-2">
+                  <label htmlFor="price" className="block text-sm font-medium text-zinc-300 mb-2">
                     Precio (USD)
                   </label>
                   <input
+                    id="price"
                     type="number"
+                    min="0.01"
+                    step="0.01"
                     value={form.price}
                     onChange={(e) => setForm({ ...form, price: e.target.value })}
                     className="w-full px-4 py-3 bg-brand-black border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-brand-orange"
@@ -296,45 +356,60 @@ export default function AdminPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-2">
+                  <label htmlFor="category" className="block text-sm font-medium text-zinc-300 mb-2">
                     Categoría
                   </label>
                   <select
+                    id="category"
                     value={form.category}
-                    onChange={(e) => setForm({ ...form, category: e.target.value })}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        category: e.target.value as InstrumentCategory,
+                      })
+                    }
                     className="w-full px-4 py-3 bg-brand-black border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-brand-orange"
                   >
                     {CATEGORIES.map((cat) => (
                       <option key={cat} value={cat}>
-                        {CATEGORY_LABELS[cat as keyof typeof CATEGORY_LABELS]}
+                        {CATEGORY_LABELS[cat]}
                       </option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-2">
+                  <label htmlFor="condition" className="block text-sm font-medium text-zinc-300 mb-2">
                     Condición
                   </label>
                   <select
+                    id="condition"
                     value={form.condition}
-                    onChange={(e) => setForm({ ...form, condition: e.target.value as any })}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        condition: e.target.value as Condition,
+                      })
+                    }
                     className="w-full px-4 py-3 bg-brand-black border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-brand-orange"
                   >
                     {CONDITIONS.map((cond) => (
                       <option key={cond} value={cond}>
-                        {CONDITION_LABELS[cond as keyof typeof CONDITION_LABELS]}
+                        {CONDITION_LABELS[cond]}
                       </option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-2">
+                  <label htmlFor="offerPrice" className="block text-sm font-medium text-zinc-300 mb-2">
                     Precio de Oferta (USD)
                   </label>
                   <input
+                    id="offerPrice"
                     type="number"
+                    min="0.01"
+                    step="0.01"
                     value={form.offerPrice}
                     onChange={(e) => setForm({ ...form, offerPrice: e.target.value })}
                     className="w-full px-4 py-3 bg-brand-black border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-brand-orange"
@@ -343,23 +418,29 @@ export default function AdminPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-2">
+                  <label htmlFor="discountPercentage" className="block text-sm font-medium text-zinc-300 mb-2">
                     Descuento (%)
                   </label>
                   <input
+                    id="discountPercentage"
                     type="number"
+                    min="0"
+                    max="100"
                     value={form.discountPercentage}
-                    onChange={(e) => setForm({ ...form, discountPercentage: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, discountPercentage: e.target.value })
+                    }
                     className="w-full px-4 py-3 bg-brand-black border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-brand-orange"
                     placeholder="Ej: 15"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-2">
+                  <label htmlFor="brand" className="block text-sm font-medium text-zinc-300 mb-2">
                     Marca
                   </label>
                   <input
+                    id="brand"
                     type="text"
                     value={form.brand}
                     onChange={(e) => setForm({ ...form, brand: e.target.value })}
@@ -369,22 +450,25 @@ export default function AdminPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-2">
+                  <label htmlFor="model" className="block text-sm font-medium text-zinc-300 mb-2">
                     Modelo
                   </label>
                   <input
+                    id="model"
                     type="text"
                     value={form.model}
                     onChange={(e) => setForm({ ...form, model: e.target.value })}
                     className="w-full px-4 py-3 bg-brand-black border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-brand-orange"
+                    required
                   />
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-zinc-300 mb-2">
+                  <label htmlFor="image" className="block text-sm font-medium text-zinc-300 mb-2">
                     URL de Imagen
                   </label>
                   <input
+                    id="image"
                     type="url"
                     value={form.image}
                     onChange={(e) => setForm({ ...form, image: e.target.value })}
@@ -399,7 +483,9 @@ export default function AdminPage() {
                     <input
                       type="checkbox"
                       checked={form.featured}
-                      onChange={(e) => setForm({ ...form, featured: e.target.checked })}
+                      onChange={(e) =>
+                        setForm({ ...form, featured: e.target.checked })
+                      }
                       className="w-5 h-5 rounded bg-brand-black border-zinc-700 text-brand-orange focus:ring-brand-orange focus:ring-offset-0"
                     />
                     <span className="text-sm text-zinc-300">Instrumento destacado</span>

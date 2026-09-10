@@ -4,6 +4,7 @@ import {
   mutateInstruments,
 } from "@/lib/store/instruments";
 import { validateInstrument } from "@/lib/catalog";
+import { requireSession } from "@/lib/auth";
 
 /**
  * GET /api/instruments/[id] — un instrumento por id; 404 si no existe.
@@ -40,6 +41,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+
+  // Mutación: requiere sesión admin válida (401 sin cookie).
+  const unauthorized = await requireSession();
+  if (unauthorized) return unauthorized;
 
   let body: unknown;
   try {
@@ -89,6 +94,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+
+  // Mutación: requiere sesión admin válida (401 sin cookie).
+  const unauthorized = await requireSession();
+  if (unauthorized) return unauthorized;
+
   try {
     const existing = getInstrumentById(id);
     if (!existing) {

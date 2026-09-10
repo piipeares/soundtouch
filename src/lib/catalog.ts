@@ -22,6 +22,11 @@ const CONDITION_VALUES: Condition[] = [
   "reacondicionado",
 ];
 
+// Listas canónicas compartidas: el form admin y la validación usan la MISMA
+// fuente (no duplicar los valores en componentes).
+export const CATEGORIES: readonly InstrumentCategory[] = CATEGORY_VALUES;
+export const CONDITIONS: readonly Condition[] = CONDITION_VALUES;
+
 /** Categorías presentes en la lista (solo las que tienen ≥1 instrumento). */
 export function activeCategories(list: Instrument[]): InstrumentCategory[] {
   return CATEGORY_VALUES.filter((category) =>

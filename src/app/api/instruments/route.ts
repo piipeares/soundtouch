@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { readInstruments, mutateInstruments } from "@/lib/store/instruments";
 import { validateInstrument } from "@/lib/catalog";
+import { requireSession } from "@/lib/auth";
 
 /**
  * GET /api/instruments — lista el catálogo desde el JSON store
@@ -25,6 +26,10 @@ export async function GET() {
  * Genera id único, persiste (mutex) y revalida "/" y "/producto/[id]".
  */
 export async function POST(request: NextRequest) {
+  // Mutación: requiere sesión admin válida (401 sin cookie).
+  const unauthorized = await requireSession();
+  if (unauthorized) return unauthorized;
+
   let body: unknown;
   try {
     body = await request.json();
