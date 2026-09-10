@@ -1,39 +1,55 @@
 import { NextRequest, NextResponse } from "next/server";
-import { instruments } from "@/lib/data";
-import { Instrument, Condition, InstrumentCategory } from "@/types";
+import { randomUUID } from "node:crypto";
+import { readInstruments, mutateInstruments } from "@/lib/store/instruments";
+import { validateInstrument } from "@/lib/catalog";
 
-// In-memory storage (use database in production)
-let instrumentsStore: Instrument[] = [...instruments];
-
+/**
+ * GET /api/instruments — lista el catálogo desde el JSON store
+ * (auto-siembra data/instruments.json si falta o está corrupto).
+ */
 export async function GET() {
-  return NextResponse.json(instrumentsStore);
-}
-
-export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    
-    const newInstrument: Instrument = {
-      id: String(Date.now()),
-      name: body.name,
-      description: body.description,
-      price: Number(body.price),
-      image: body.image,
-      category: body.category as InstrumentCategory,
-      brand: body.brand,
-      model: body.model,
-      featured: body.featured || false,
-      condition: (body.condition as Condition) || "nuevo",
-      offerPrice: body.offerPrice ? Number(body.offerPrice) : undefined,
-      discountPercentage: body.discountPercentage ? Number(body.discountPercentage) : undefined,
-    };
-
-    instrumentsStore.push(newInstrument);
-    
-    return NextResponse.json(newInstrument, { status: 201 });
+    return NextResponse.json(readInstruments());
   } catch {
     return NextResponse.json(
-      { error: "Error al crear instrumento" },
+      { error: "Error al leer el catálogo" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST /api/instruments — crea un instrumento.
+ * Valida el payload (brand/model/price obligatorios, price > 0,
+ * offerPrice < price, category válida) → 400 si no cumple.
+ * Genera id único, persiste (mutex) y revalida "/" y "/producto/[id]".
+ */
+export async function POST(request: NextRequest) {
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: "JSON inválido en el body" },
+      { status: 400 }
+    );
+  }
+
+  const result = validateInstrument(body);
+  if (!result.ok) {
+    return NextResponse.json(
+      { error: "Datos inválidos", fields: result.errors },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const instrument = { ...result.instrument, id: randomUUID() };
+    await mutateInstruments((list) => [...list, instrument]);
+    return NextResponse.json(instrument, { status: 201 });
+  } catch {
+    return NextResponse.json(
+      { error: "Error al guardar el instrumento" },
       { status: 500 }
     );
   }
