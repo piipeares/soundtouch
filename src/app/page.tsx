@@ -5,7 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import ProductCard from "@/components/product/ProductCard";
 import Filters from "@/components/ui/Filters";
-import { instruments, searchInstruments } from "@/lib/data";
+import { instruments } from "@/lib/seed";
+import { searchInstruments } from "@/lib/catalog";
 import { generateWhatsAppLink } from "@/config/business";
 import { InstrumentCategory } from "@/types";
 
@@ -20,7 +21,7 @@ function HomeContent() {
   
   // Filtrar instrumentos
   let filteredInstruments = searchQuery 
-    ? searchInstruments(searchQuery)
+    ? searchInstruments(instruments, searchQuery)
     : instruments;
   
   // Aplicar filtro de categoría
