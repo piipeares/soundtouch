@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+:root {
+  /* Modo Oscuro (Home/Catálogo) */
+  --background: #0A0A0A;
+  --foreground: #FAFAFA;
+  
+  /* Colores de marca */
+  --brand-orange: #FFB74D;
+  --brand-orange-hover: #FFA726;
+  --brand-black: #0A0A0A;
+  --brand-gray: #27272A;
+  --brand-gray-light: #A1A1AA;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-orange-hover: var(--brand-orange-hover);
+  --color-brand-black: var(--brand-black);
+  --color-brand-gray: var(--brand-gray);
+  --color-brand-gray-light: var(--brand-gray-light);
+  --font-sans: var(--font-plus-jakarta);
+}
+
+/* Modo Claro para páginas de producto */
+.light-mode {
+  --background: #FFFFFF;
+  --foreground: #18181B;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-plus-jakarta), sans-serif;
+}
