@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Mail, Phone, MapPin } from "lucide-react";
 import Logo from "./Logo";
+import { business } from "@/config/business";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -50,19 +51,19 @@ export default function Footer() {
             <ul className="space-y-3">
               <li className="flex items-center gap-2 text-sm text-zinc-400">
                 <Phone size={16} className="text-brand-orange" />
-                <a href="tel:+5491112345678" className="hover:text-brand-orange transition-colors">
-                  +54 9 11 1234-5678
+                <a href={business.telLink} className="hover:text-brand-orange transition-colors">
+                  {business.phoneDisplay}
                 </a>
               </li>
               <li className="flex items-center gap-2 text-sm text-zinc-400">
                 <Mail size={16} className="text-brand-orange" />
-                <a href="mailto:info@soundtouch.com" className="hover:text-brand-orange transition-colors">
-                  info@soundtouch.com
+                <a href={business.mailtoLink} className="hover:text-brand-orange transition-colors">
+                  {business.email}
                 </a>
               </li>
               <li className="flex items-start gap-2 text-sm text-zinc-400">
                 <MapPin size={16} className="text-brand-orange mt-0.5" />
-                <span>Buenos Aires, Argentina</span>
+                <span>{business.city}</span>
               </li>
             </ul>
           </div>
@@ -71,7 +72,7 @@ export default function Footer() {
         {/* Copyright */}
         <div className="mt-12 pt-8 border-t border-brand-gray">
           <p className="text-center text-sm text-zinc-500">
-            © {currentYear} SoundTouch Instrumentos. Todos los derechos reservados.
+            © {currentYear} {business.name}. Todos los derechos reservados.
           </p>
         </div>
       </div>

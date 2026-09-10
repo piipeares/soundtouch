@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import ProductCard from "@/components/product/ProductCard";
 import Filters from "@/components/ui/Filters";
 import { instruments, searchInstruments } from "@/lib/data";
+import { generateWhatsAppLink } from "@/config/business";
 import { InstrumentCategory } from "@/types";
 
 type Tab = "catalogo" | "ofertas";
@@ -139,7 +140,7 @@ function HomeContent() {
             Tenemos acceso a inventario exclusivo.
           </p>
           <a
-            href="https://wa.me/5491112345678?text=Hola! Estoy buscando un instrumento específico"
+            href={generateWhatsAppLink("Hola! Estoy buscando un instrumento específico")}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 mt-6 px-6 py-3 bg-brand-orange text-brand-black font-semibold rounded-lg hover:bg-brand-orange-hover transition-colors"
