@@ -3,7 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, MessageCircle, Check } from "lucide-react";
 import { getInstrumentById } from "@/lib/data";
-import { formatPrice, generateWhatsAppLink } from "@/lib/utils";
+import { formatPrice } from "@/lib/utils";
+import { generateWhatsAppLink } from "@/config/business";
 
 interface ProductPageProps {
   params: Promise<{ id: string }>;
@@ -36,7 +37,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
     notFound();
   }
  
-  const whatsappLink = generateWhatsAppLink(instrument.name);
+  const whatsappLink = generateWhatsAppLink(
+    `Hola! Estoy interesado en el instrumento: ${instrument.name}. ¿Me podrías dar más información?`
+  );
  
   return (
     <article className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { MessageCircle, Tag } from "lucide-react";
 import { Instrument, CATEGORY_LABELS, CONDITION_LABELS } from "@/types";
 import { formatPrice } from "@/lib/utils";
-import { generateWhatsAppLink } from "@/lib/utils";
+import { generateWhatsAppLink } from "@/config/business";
 import { useCurrency } from "@/context/CurrencyContext";
 
 interface ProductCardProps {
@@ -102,7 +102,9 @@ export default function ProductCard({ instrument, index }: ProductCardProps) {
           </div>
 
           <Link
-            href={generateWhatsAppLink(instrument.name)}
+            href={generateWhatsAppLink(
+              `Hola! Estoy interesado en el instrumento: ${instrument.name}. ¿Me podrías dar más información?`
+            )}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-4 py-2 bg-brand-orange text-brand-black text-sm font-semibold rounded-lg hover:bg-brand-orange-hover transition-colors"

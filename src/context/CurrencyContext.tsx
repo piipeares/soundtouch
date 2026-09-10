@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { business } from "@/config/business";
 
 type Currency = "USD" | "ARS";
 
@@ -14,13 +15,10 @@ interface CurrencyContextType {
 const defaultContext: CurrencyContextType = {
   currency: "USD",
   toggleCurrency: () => {},
-  exchangeRate: 1050,
+  exchangeRate: business.exchangeRate,
 };
 
 const CurrencyContext = createContext<CurrencyContextType>(defaultContext);
-
-// Tasa de cambio fija por ahora (luego se puede actualizar automáticamente)
-const EXCHANGE_RATE = 1050;
 
 export function CurrencyProvider({ children }: { children: ReactNode }) {
   const [currency, setCurrency] = useState<Currency>("USD");
@@ -39,11 +37,13 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <CurrencyContext.Provider value={{ 
-      currency: mounted ? currency : "USD", 
-      toggleCurrency, 
-      exchangeRate: EXCHANGE_RATE 
-    }}>
+    <CurrencyContext.Provider
+      value={{
+        currency: mounted ? currency : "USD",
+        toggleCurrency,
+        exchangeRate: business.exchangeRate,
+      }}
+    >
       {children}
     </CurrencyContext.Provider>
   );
