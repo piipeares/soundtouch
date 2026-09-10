@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Lock, Mail, Eye, EyeOff } from "lucide-react";
 import Logo from "@/components/layout/Logo";
 
@@ -25,12 +26,13 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
 
       if (res.ok) {
         router.push("/admin");
       } else {
-        setError(data.error || "Error al iniciar sesión");
+        // 401 genérico: el server no revela cuál campo falló.
+        setError(data?.error || "Credenciales inválidas");
       }
     } catch {
       setError("Error de conexión");
@@ -76,8 +78,9 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-brand-black border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-brand-orange transition-colors"
-                  placeholder="admin@soundtouch.com"
+                  placeholder="tu@email.com"
                   required
+                  autoComplete="username"
                 />
               </div>
             </div>
@@ -97,11 +100,13 @@ export default function LoginPage() {
                   className="w-full pl-10 pr-12 py-3 bg-brand-black border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-brand-orange transition-colors"
                   placeholder="••••••••"
                   required
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -120,9 +125,9 @@ export default function LoginPage() {
         </form>
 
         <p className="mt-6 text-center text-sm text-zinc-500">
-          <a href="/" className="hover:text-brand-orange transition-colors">
+          <Link href="/" className="hover:text-brand-orange transition-colors">
             ← Volver al sitio
-          </a>
+          </Link>
         </p>
       </div>
     </div>
