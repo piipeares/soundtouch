@@ -2,8 +2,7 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, MessageCircle, Check } from "lucide-react";
-import { instruments as seedInstruments } from "@/lib/seed";
-import { findInstrumentById } from "@/lib/catalog";
+import { getInstrumentById } from "@/lib/store/instruments";
 import { formatPrice } from "@/lib/utils";
 import { generateWhatsAppLink } from "@/config/business";
 
@@ -13,7 +12,7 @@ interface ProductPageProps {
  
 export async function generateMetadata({ params }: ProductPageProps) {
   const { id } = await params;
-  const instrument = findInstrumentById(seedInstruments, id);
+  const instrument = getInstrumentById(id);
  
   if (!instrument) {
     return { title: "Producto no encontrado | SoundTouch" };
@@ -32,7 +31,7 @@ export async function generateMetadata({ params }: ProductPageProps) {
  
 export default async function ProductPage({ params }: ProductPageProps) {
   const { id } = await params;
-  const instrument = findInstrumentById(seedInstruments, id);
+  const instrument = getInstrumentById(id);
  
   if (!instrument) {
     notFound();
