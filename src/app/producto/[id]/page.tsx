@@ -2,9 +2,11 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, MessageCircle, Check } from "lucide-react";
 import { getInstrumentById } from "@/lib/store/instruments";
-import { formatPrice } from "@/lib/utils";
 import { generateWhatsAppLink } from "@/config/business";
 import InstrumentImage from "@/components/product/InstrumentImage";
+import Price from "@/components/product/Price";
+import JsonLd from "@/components/JsonLd";
+import { CATEGORY_LABELS, CONDITION_LABELS } from "@/types";
 
 interface ProductPageProps {
   params: Promise<{ id: string }>;
@@ -43,6 +45,23 @@ export default async function ProductPage({ params }: ProductPageProps) {
  
   return (
     <article className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "Product",
+          name: instrument.name,
+          description: instrument.description,
+          brand: { "@type": "Brand", name: instrument.brand },
+          category: CATEGORY_LABELS[instrument.category],
+          image: instrument.image,
+          offers: {
+            "@type": "Offer",
+            price: instrument.offerPrice ?? instrument.price,
+            priceCurrency: "USD",
+            availability: "https://schema.org/InStock",
+          },
+        }}
+      />
       {/* Back button */}
       <Link
         href="/"
@@ -81,9 +100,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
  
           {/* Price */}
           <div className="mt-8">
-            <span className="font-display text-3xl font-semibold text-foreground">
-              {formatPrice(instrument.price)}
-            </span>
+            <Price
+              price={instrument.price}
+              offerPrice={instrument.offerPrice}
+              discountPercentage={instrument.discountPercentage}
+            />
           </div>
  
           {/* CTA Button */}
@@ -117,8 +138,32 @@ export default async function ProductPage({ params }: ProductPageProps) {
               )}
               <li className="flex items-center gap-3 text-zinc-400">
                 <Check size={20} className="text-green-500" />
-                <span>Categoría: {instrument.category}</span>
+                <span>Categoría: {CATEGORY_LABELS[instrument.category]}</span>
               </li>
+              <li className="flex items-center gap-3 text-zinc-400">
+                <Check size={20} className="text-green-500" />
+                <span>
+                  Condición: {CONDITION_LABELS[instrument.condition]}
+                </span>
+              </li>
+              {instrument.specs && instrument.specs.length > 0 && (
+                <li className="flex flex-col gap-2 pt-2">
+                  <span className="text-sm font-semibold text-foreground">
+                    Especificaciones
+                  </span>
+                  <ul className="space-y-1.5">
+                    {instrument.specs.map((spec) => (
+                      <li
+                        key={spec}
+                        className="flex items-center gap-3 text-zinc-400"
+                      >
+                        <Check size={16} className="text-green-500" />
+                        <span>{spec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              )}
             </ul>
           </div>
         </div>

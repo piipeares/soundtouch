@@ -4,6 +4,7 @@ import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { CurrencyProvider } from "@/context/CurrencyContext";
+import { business } from "@/config/business";
 
 const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta",
@@ -19,12 +20,23 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "SoundTouch Instrumentos | Instrumentos Musicales de Alta Gama",
-  description: "Catálogo de instrumentos musicales premium. Guitarras, bajos, teclados y más de las mejores marcas.",
+  metadataBase: new URL(business.siteUrl),
+  title: {
+    default: "SoundTouch Instrumentos | Instrumentos Musicales de Alta Gama",
+    template: "%s | SoundTouch Instrumentos",
+  },
+  description:
+    "Catálogo de instrumentos musicales premium en Argentina. Guitarras, bajos, pedales y más de las mejores marcas. Contacto directo por WhatsApp.",
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     title: "SoundTouch Instrumentos",
-    description: "Instrumentos musicales de alta gama",
+    description:
+      "Instrumentos musicales de alta gama. Compra y venta con contacto directo por WhatsApp.",
     type: "website",
+    locale: "es_AR",
+    siteName: "SoundTouch Instrumentos",
   },
 };
 

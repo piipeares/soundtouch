@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { business } from "@/config/business";
 
 type Currency = "USD" | "ARS";
@@ -20,26 +20,40 @@ const defaultContext: CurrencyContextType = {
 
 const CurrencyContext = createContext<CurrencyContextType>(defaultContext);
 
+/**
+ * Lee la moneda persistida SOLO en el cliente (lazy initializer). Evita el
+ * patrón setState-in-effect (react-hooks/set-state-in-effect) y el flash de
+ * USD cuando el usuario ya eligió ARS.
+ */
+function getInitialCurrency(): Currency {
+  if (typeof window === "undefined") return "USD";
+  try {
+    const saved = window.localStorage.getItem("currency");
+    return saved === "ARS" ? "ARS" : "USD";
+  } catch {
+    return "USD";
+  }
+}
+
 export function CurrencyProvider({ children }: { children: ReactNode }) {
-  const [currency, setCurrency] = useState<Currency>("USD");
-  const [mounted, setMounted] = useState(false);
+  const [currency, setCurrency] = useState<Currency>(getInitialCurrency);
 
-  useEffect(() => {
-    setMounted(true);
-    const saved = localStorage.getItem("currency") as Currency;
-    if (saved) setCurrency(saved);
+  const toggleCurrency = useCallback(() => {
+    setCurrency((prev) => {
+      const next: Currency = prev === "USD" ? "ARS" : "USD";
+      try {
+        window.localStorage.setItem("currency", next);
+      } catch {
+        // localStorage puede no estar disponible (privacy mode); el toggle sigue funcionando en memoria.
+      }
+      return next;
+    });
   }, []);
-
-  const toggleCurrency = () => {
-    const newCurrency = currency === "USD" ? "ARS" : "USD";
-    setCurrency(newCurrency);
-    localStorage.setItem("currency", newCurrency);
-  };
 
   return (
     <CurrencyContext.Provider
       value={{
-        currency: mounted ? currency : "USD",
+        currency,
         toggleCurrency,
         exchangeRate: business.exchangeRate,
       }}
