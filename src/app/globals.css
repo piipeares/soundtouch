@@ -1,37 +1,175 @@
 @import "tailwindcss";
 
+/* ============================================================
+   SoundTouch v2 — Sistema visual noir + amber (design D2)
+   Base #09090B · superficies #131316/#1A1A1E · bordes white/8
+   Acento amber #F59E0B → gradiente amber→orange en CTAs/glows
+   ============================================================ */
+
 :root {
-  /* Modo Oscuro (Home/Catálogo) */
-  --background: #0A0A0A;
+  --background: #09090B;
   --foreground: #FAFAFA;
-  
-  /* Colores de marca */
-  --brand-orange: #FFB74D;
-  --brand-orange-hover: #FFA726;
-  --brand-black: #0A0A0A;
-  --brand-gray: #27272A;
+
+  /* Superficies */
+  --surface: #131316;
+  --surface-raised: #1A1A1E;
+
+  /* Acento amber → orange */
+  --brand-accent: #F59E0B;
+  --brand-accent-bright: #FBBF24;
+  --brand-accent-deep: #EA580C;
+
+  /* Alias v1 (backwards compatible con componentes previos) */
+  --brand-orange: var(--brand-accent);
+  --brand-orange-hover: var(--brand-accent-bright);
+  --brand-black: var(--background);
+  --brand-gray: var(--surface-raised);
   --brand-gray-light: #A1A1AA;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-accent-bright: var(--brand-accent-bright);
+  --color-brand-accent-deep: var(--brand-accent-deep);
+
   --color-brand-orange: var(--brand-orange);
   --color-brand-orange-hover: var(--brand-orange-hover);
   --color-brand-black: var(--brand-black);
   --color-brand-gray: var(--brand-gray);
   --color-brand-gray-light: var(--brand-gray-light);
-  --font-sans: var(--font-plus-jakarta);
+
+  /* Tipografías */
+  --font-sans: var(--font-plus-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
+
+  /* Radios del sistema */
+  --radius-card: 1rem;      /* rounded-2xl */
+  --radius-modal: 1.5rem;    /* rounded-3xl */
+  --radius-pill: 9999px;
+
+  /* Sombras multi-capa + glow amber */
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -8px rgb(0 0 0 / 0.6);
+  --shadow-lifted: 0 2px 4px rgb(0 0 0 / 0.4), 0 16px 40px -12px rgb(0 0 0 / 0.7),
+    0 0 0 1px rgb(245 158 11 / 0.12);
+  --shadow-glow: 0 0 24px rgb(245 158 11 / 0.22), 0 0 64px rgb(245 158 11 / 0.12);
+  --shadow-modal: 0 24px 80px -16px rgb(0 0 0 / 0.8);
 }
 
-/* Modo Claro para páginas de producto */
-.light-mode {
-  --background: #FFFFFF;
-  --foreground: #18181B;
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-plus-jakarta), sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================
+   Utilities premium (server-safe, sin JS)
+   ============================================================ */
+
+/* Glow radial amber detrás de hero/secciones (gradientes CSS, sin assets) */
+.bg-glow-amber {
+  background: radial-gradient(
+    ellipse 60% 50% at 50% 35%,
+    rgb(245 158 11 / 0.16),
+    transparent 70%
+  );
+}
+
+.bg-glow-amber-soft {
+  background: radial-gradient(
+    ellipse 65% 55% at 50% 30%,
+    rgb(245 158 11 / 0.09),
+    transparent 70%
+  );
+}
+
+/* Texto con gradiente amber→orange */
+.text-gradient-amber {
+  background: linear-gradient(
+    120deg,
+    var(--brand-accent) 0%,
+    var(--brand-accent-bright) 45%,
+    var(--brand-accent-deep) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Superficie de card estándar del sistema */
+.card-surface {
+  background: var(--surface);
+  border: 1px solid rgb(255 255 255 / 0.08);
+}
+
+/* ============================================================
+   A11y: focus visible consistente (spec premium-design)
+   ============================================================ */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--brand-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ============================================================
+   Hero entrance — CSS keyframes (design D2: server, sin JS),
+   honours prefers-reduced-motion
+   ============================================================ */
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes hero-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-hero-rise {
+  animation: hero-rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-hero-fade {
+  animation: hero-fade 1.2s ease-out both;
+}
+
+.hero-delay-1 {
+  animation-delay: 0.1s;
+}
+
+.hero-delay-2 {
+  animation-delay: 0.2s;
+}
+
+.hero-delay-3 {
+  animation-delay: 0.3s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .animate-hero-rise,
+  .animate-hero-fade {
+    animation: none;
+  }
 }
