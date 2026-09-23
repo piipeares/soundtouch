@@ -8,7 +8,7 @@ import TestimonialsSection from "@/components/home/TestimonialsSection";
 import GuaranteeSection from "@/components/home/GuaranteeSection";
 import ContactSection from "@/components/home/ContactSection";
 import JsonLd from "@/components/JsonLd";
-import { instruments } from "@/lib/seed";
+import { readInstruments } from "@/lib/store/instruments";
 import { generateWhatsAppLink, business } from "@/config/business";
 
 export const metadata: Metadata = {
@@ -17,13 +17,19 @@ export const metadata: Metadata = {
     "Vidriera de instrumentos musicales de alta gama en Argentina. Guitarras, bajos, pedales y más. Contacto directo por WhatsApp.",
 };
 
+// ISR: la home se revalida tras writes del admin (revalidatePath("/") en el
+// store) y como máximo cada 60 s — el catálogo público refleja las ediciones.
+export const revalidate = 60;
+
 /**
  * Home (design D3 / task 5.1): SERVER component. El catálogo y las secciones
  * se renderizan en el servidor; la única isla client es CatalogBrowser
- * (tabs/filtros/búsqueda). Los datos vienen del seed (data hardcodeada, aún
- * sin BD externa por decisión del owner).
+ * (tabs/filtros/búsqueda). Lee del STORE (fuente única: data/instruments.json
+ * sembrado desde el seed), NO del seed estático — así las altas/ediciones del
+ * admin aparecen en el catálogo público.
  */
 export default function Home() {
+  const instruments = readInstruments();
   return (
     <div className="bg-background min-h-screen">
       <JsonLd

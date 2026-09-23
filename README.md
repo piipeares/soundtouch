@@ -1,55 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SoundTouch Instrumentos
 
-## Getting Started
+Vidriera de instrumentos musicales premium. Los compradores contactan directo al dueño por WhatsApp o email. Next.js 16 (App Router) + React 19 + Tailwind CSS 4 + TypeScript strict.
 
-First, run the development server:
+## Stack
+
+- **Framework**: Next.js 16.2.4 (App Router, server-first: la home es Server Component estática/ISR con una isla client para el catálogo)
+- **UI**: Tailwind 4 (`@theme` en `globals.css`), Framer Motion, lucide-react
+- **Tipografía**: Fraunces (display) + Plus Jakarta Sans (texto), vía `next/font`
+- **Diseño**: sistema "noir + amber" — dark en todo el sitio (`#09090B` / `#131316` / acento `#FFB74D`)
+
+## Comandos
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run dev     # dev server (http://localhost:3000)
+npm run build   # producción
+npm run start   # servir build
+npm run lint    # ESLint
+npx tsc --noEmit # typecheck
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Configuración (`.env`)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Copiá `.env.example` a `.env.local` y completá:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Descripción |
+|---|---|
+| `NEXT_PUBLIC_WHATSAPP_NUMBER` | Teléfono WhatsApp (formato internacional sin `+`, ej. `5491131736468`) |
+| `NEXT_PUBLIC_EMAIL` | Email de contacto |
+| `NEXT_PUBLIC_SITE_URL` | URL pública del sitio (SEO: sitemap, canonical, OG) |
+| `NEXT_PUBLIC_EXCHANGE_RATE` | Tasa ARS/USD para el toggle de moneda |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Credenciales del panel admin (`/admin`) |
+| `SESSION_SECRET` | Secreto para firmar la cookie de sesión HMAC-SHA256 |
 
-## Persistencia del catálogo (`data/`)
+Generar secreto: `node -e "console.log(crypto.randomBytes(32).toString('base64url'))"`
 
-El catálogo se persiste en `data/instruments.json` (gitignored), manejado por
-`src/lib/store/instruments.ts`:
+## Datos y persistencia
 
-- **Seed automático**: en el primer acceso, si el archivo no existe o está
-  corrupto (JSON inválido / shape incorrecto), el store se regenera desde
-  `src/lib/seed.ts` (reseed controlado; la API nunca crashea por datos
-  faltantes).
-- **Escrituras**: serializadas con un mutex en memoria (promise chain) para
-  evitar write races entre requests concurrentes. Tras cada escritura se
-  revalidan `/` y `/producto/[id]` (`revalidatePath`).
-- **LÍMITE — single-process**: el store es un archivo local del proceso que
-  corre la app. Funciona en dev y en un VPS de instancia única, pero NO en
-  serverless multi-instancia (Vercel u otros): ahí el filesystem no es
-  compartido entre instancias y cada una tendría su propio archivo. Si algún
-  día se escala a multi-instancia, migrar la persistencia a una DB real
-  (SQLite/Postgres) dejando la API como está.
+- **Seed**: `src/lib/seed.ts` — 15 instrumentos iniciales.
+- **Store**: `src/lib/store/instruments.ts` — lee/escribe `data/instruments.json` (gitignored, auto-seed/reseed la primera vez). API REST en `/api/instruments`.
+- **Límite conocido**: el store JSON es single-process. No apto para serverless multi-instancia (Vercel) sin migrar a una BD (Supabase/Postgres es el siguiente paso). La home usa ISR (revalidate 60 s) + `revalidatePath("/")` tras writes.
 
-## Learn More
+## Estructura
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+├── app/
+│   ├── page.tsx              # Home: server component + secciones (Nosotros, Catálogo, Cómo comprar, Testimonios, Garantía, Contacto)
+│   ├── producto/[id]/        # Detalle (server, ISR-able): oferta, moneda, specs, JSON-LD Product
+│   ├── admin/                # Panel CRUD (login + dashboard) — sesión por cookie firmada HttpOnly
+│   ├── api/instruments/      # CRUD REST (protected: POST/PUT/DELETE requieren sesión)
+│   ├── api/auth/             # Login/logout/verificación de sesión
+│   ├── sitemap.ts / robots.ts / opengraph-image.tsx
+├── components/               # layout/, product/, home/, admin/, ui/
+├── context/CurrencyContext.tsx  # Toggle USD/ARS (persistido en localStorage)
+├── config/business.ts        # Fuente única de contacto del negocio (env-backable)
+├── lib/                      # seed, catalog (helpers puros), store (JSON), utils
+└── types/index.ts            # Instrument, categorías, condiciones, labels
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## SEO
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `metadataBase` + canonical, OpenGraph, sitemap.xml (16 URLs), robots.txt (desindexa /admin y /api), OG image 1200×630.
+- JSON-LD: `Store` (home) y `Product` (detalle) con scrub anti-XSS.
 
-## Deploy on Vercel
+## Admin
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`/admin` (login con `ADMIN_EMAIL`/`ADMIN_PASSWORD` de `.env.local`). CRUD completo: crear (POST), editar (PUT, no duplica), borrar (DELETE, con confirmación). Los cambios persisten en `data/instruments.json` y el catálogo público los refleja.

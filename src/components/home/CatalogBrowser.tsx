@@ -60,6 +60,8 @@ export default function CatalogBrowser({ instruments }: CatalogBrowserProps) {
         <div className="flex items-center justify-center gap-4 mb-8 pt-4">
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === "catalogo"}
             onClick={() => setActiveTab("catalogo")}
             className={`px-6 py-2 rounded-full font-medium transition-colors ${
               activeTab === "catalogo"
@@ -71,6 +73,8 @@ export default function CatalogBrowser({ instruments }: CatalogBrowserProps) {
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === "ofertas"}
             onClick={() => setActiveTab("ofertas")}
             className={`px-6 py-2 rounded-full font-medium transition-colors flex items-center gap-2 ${
               activeTab === "ofertas"

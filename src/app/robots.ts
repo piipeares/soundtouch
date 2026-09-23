@@ -6,10 +6,11 @@ import { business } from "@/config/business";
  */
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: {
-      userAgent: "*",
-      allow: "/",
-    },
+    rules: [
+      { userAgent: "*", allow: "/" },
+      { userAgent: "*", disallow: "/admin" },
+      { userAgent: "*", disallow: "/api" },
+    ],
     sitemap: `${business.siteUrl.replace(/\/$/, "")}/sitemap.xml`,
   };
 }
