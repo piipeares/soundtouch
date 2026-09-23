@@ -1,12 +1,17 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { motion } from "framer-motion";
 import ProductCard from "@/components/product/ProductCard";
 import Filters from "@/components/ui/Filters";
+import Hero from "@/components/home/Hero";
+import AboutSection from "@/components/home/AboutSection";
+import HowToBuySection from "@/components/home/HowToBuySection";
+import TestimonialsSection from "@/components/home/TestimonialsSection";
+import GuaranteeSection from "@/components/home/GuaranteeSection";
+import ContactSection from "@/components/home/ContactSection";
 import { instruments } from "@/lib/seed";
-import { searchInstruments } from "@/lib/catalog";
+import { searchInstruments, activeCategories } from "@/lib/catalog";
 import { generateWhatsAppLink } from "@/config/business";
 import { InstrumentCategory } from "@/types";
 
@@ -33,55 +38,40 @@ function HomeContent() {
   const onSale = instruments.filter((inst) => inst.offerPrice && inst.discountPercentage);
   const displayInstruments = activeTab === "ofertas" ? onSale : filteredInstruments;
 
+  // Solo categorías con ≥1 instrumento (spec product-catalog: las vacías no se listan)
+  const categories = activeCategories(instruments);
+
   return (
-    <div className="bg-brand-black min-h-screen">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-brand-orange/5 via-transparent to-transparent rotate-12" />
-        </div>
+    <div className="bg-background min-h-screen">
+      {/* Hero */}
+      <Hero />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center"
-          >
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight">
-              <span className="text-white">SoundTouch </span>
-              <span className="text-brand-orange">Instrumentos</span>
-            </h1>
-            <p className="mt-4 text-lg md:text-xl text-zinc-400">
-              Instrumentos musicales de alta gama para músicos exigentes
-            </p>
-          </motion.div>
-        </div>
-      </section>
+      {/* Nosotros */}
+      <AboutSection />
 
-      {/* Tabs de navegación */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-center gap-4 mb-8">
+      {/* Tabs + filtros + catálogo */}
+      <section id="catalogo" className="scroll-mt-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-center gap-4 mb-8 pt-4">
           <button
             onClick={() => setActiveTab("catalogo")}
-            className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+            className={`px-6 py-2 rounded-full font-medium transition-colors ${
               activeTab === "catalogo"
-                ? "bg-brand-orange text-brand-black"
-                : "bg-brand-gray text-zinc-400 hover:text-white"
+                ? "bg-brand-accent text-brand-black"
+                : "bg-white/5 border border-white/10 text-zinc-400 hover:text-white"
             }`}
           >
             Catálogo General
           </button>
           <button
             onClick={() => setActiveTab("ofertas")}
-            className={`px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+            className={`px-6 py-2 rounded-full font-medium transition-colors flex items-center gap-2 ${
               activeTab === "ofertas"
-                ? "bg-brand-orange text-brand-black"
-                : "bg-brand-gray text-zinc-400 hover:text-white"
+                ? "bg-brand-accent text-brand-black"
+                : "bg-white/5 border border-white/10 text-zinc-400 hover:text-white"
             }`}
           >
             Ofertas
-            <span className="px-1.5 py-0.5 text-xs bg-red-500 text-white rounded">
+            <span className="px-1.5 py-0.5 text-xs bg-red-500 text-white rounded-full">
               {onSale.length}
             </span>
           </button>
@@ -94,13 +84,14 @@ function HomeContent() {
             <Filters 
               selectedCategory={selectedCategory} 
               onCategoryChange={setSelectedCategory} 
+              categories={categories}
             />
           </div>
         )}
 
         {/* Mensaje de búsqueda */}
         {searchQuery && (
-          <div className="mb-6 p-4 bg-brand-gray rounded-lg border border-zinc-800">
+          <div className="mb-6 p-4 bg-white/5 rounded-xl border border-white/10">
             <p className="text-zinc-400">
               Resultados para: <span className="text-white font-medium">"{searchQuery}"</span>
               <span className="text-zinc-500 ml-2">({displayInstruments.length} resultados)</span>
@@ -132,8 +123,8 @@ function HomeContent() {
 
       {/* CTA Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="bg-brand-gray rounded-2xl p-8 md:p-12 text-center border border-zinc-800">
-          <h2 className="text-2xl md:text-3xl font-bold text-white">
+        <div className="card-surface rounded-2xl p-8 md:p-12 text-center shadow-card">
+          <h2 className="font-display text-2xl md:text-3xl font-bold text-white">
             ¿No encontrás lo que buscás?
           </h2>
           <p className="mt-4 text-zinc-400 max-w-xl mx-auto">
@@ -144,12 +135,18 @@ function HomeContent() {
             href={generateWhatsAppLink("Hola! Estoy buscando un instrumento específico")}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 mt-6 px-6 py-3 bg-brand-orange text-brand-black font-semibold rounded-lg hover:bg-brand-orange-hover transition-colors"
+            className="inline-flex items-center gap-2 mt-6 px-6 py-3 bg-gradient-to-r from-brand-accent to-brand-accent-deep text-brand-black font-semibold rounded-full shadow-glow hover:opacity-90 transition-opacity"
           >
             Consultar Disponibilidad
           </a>
         </div>
       </section>
+
+      {/* Cómo comprar / Testimonios / Garantía / Contacto */}
+      <HowToBuySection />
+      <TestimonialsSection />
+      <GuaranteeSection />
+      <ContactSection />
     </div>
   );
 }
@@ -157,8 +154,8 @@ function HomeContent() {
 export default function Home() {
   return (
     <Suspense fallback={
-      <div className="bg-brand-black min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-orange"></div>
+      <div className="bg-background min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-accent"></div>
       </div>
     }>
       <HomeContent />

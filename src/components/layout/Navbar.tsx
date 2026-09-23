@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Menu, X, Search, DollarSign } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Logo from "./Logo";
 import { clsx } from "clsx";
 import { useCurrency } from "@/context/CurrencyContext";
@@ -15,54 +15,57 @@ const navLinks = [
   { href: "/#contact", label: "Contacto" },
 ];
 
+/**
+ * Navbar glass (design D2 / task 4.3): translúcida con backdrop blur, logo
+ * por next/link, search + currency toggle funcionando, anclas #about/#contact
+ * y menú mobile con aria-expanded/aria-controls (spec premium-design).
+ */
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { currency, toggleCurrency } = useCurrency();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [showSearch, setShowSearch] = useState(false);
 
   const isHomePage = pathname === "/";
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/?search=${encodeURIComponent(searchQuery.trim())}`);
-      setShowSearch(false);
-    } else {
-      // Si está vacío, resetear la búsqueda
-      router.push("/");
-    }
-  };
-
-  // Cleanup search cuando se borra el input
-  const handleSearchChange = (value: string) => {
-    setSearchQuery(value);
-    // Si se borra todo, resetear la URL
-    if (value === "") {
-      router.push("/");
-    }
+    const query = searchQuery.trim();
+    router.push(query ? `/?search=${encodeURIComponent(query)}` : "/");
+    setIsMenuOpen(false);
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-brand-black/95 backdrop-blur-md border-b border-brand-gray">
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 gap-4">
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-white/5 backdrop-blur-xl">
+      <nav
+        className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
+        aria-label="Navegación principal"
+      >
+        <div className="flex h-16 items-center justify-between gap-4">
           {/* Logo */}
           <Logo />
 
           {/* Search Bar - Desktop */}
           {isHomePage && (
-            <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md">
+            <form
+              onSubmit={handleSearch}
+              className="hidden flex-1 max-w-md md:flex"
+              role="search"
+            >
               <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+                <Search
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
+                  size={18}
+                  aria-hidden="true"
+                />
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Buscar instrumento, modelo, marca..."
-                  className="w-full pl-10 pr-4 py-2 bg-brand-gray border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-brand-orange transition-colors"
+                  className="w-full rounded-full border border-white/10 bg-white/5 py-2 pl-10 pr-4 text-sm text-foreground placeholder-zinc-500 transition-colors focus:border-brand-accent"
+                  aria-label="Buscar instrumentos"
                 />
               </div>
             </form>
@@ -71,14 +74,15 @@ export default function Navbar() {
           {/* Currency Toggle */}
           <button
             onClick={toggleCurrency}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-gray border border-zinc-700 rounded-lg text-sm font-medium text-zinc-300 hover:border-brand-orange hover:text-brand-orange transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-medium text-zinc-300 transition-colors hover:border-brand-accent/50 hover:text-brand-accent"
+            aria-label={`Cambiar moneda (actual: ${currency})`}
           >
-            <DollarSign size={16} />
+            <DollarSign size={16} aria-hidden="true" />
             <span>{currency}</span>
           </button>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden items-center gap-8 md:flex">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
@@ -86,8 +90,8 @@ export default function Navbar() {
                 className={clsx(
                   "text-sm font-medium transition-colors duration-200",
                   pathname === link.href
-                    ? "text-brand-orange"
-                    : "text-zinc-300 hover:text-brand-orange"
+                    ? "text-brand-accent"
+                    : "text-zinc-300 hover:text-brand-accent"
                 )}
               >
                 {link.label}
@@ -97,9 +101,11 @@ export default function Navbar() {
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden p-2 text-zinc-300 hover:text-brand-orange transition-colors"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            aria-label="Toggle menu"
+            className="rounded-lg p-2 text-zinc-300 transition-colors hover:bg-white/5 hover:text-brand-accent md:hidden"
+            onClick={() => setIsMenuOpen((open) => !open)}
+            aria-expanded={isMenuOpen}
+            aria-controls="mobile-menu"
+            aria-label={isMenuOpen ? "Cerrar menú" : "Abrir menú"}
           >
             {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
@@ -107,15 +113,20 @@ export default function Navbar() {
 
         {/* Mobile Search */}
         {isHomePage && (
-          <form onSubmit={handleSearch} className="md:hidden pb-4">
+          <form onSubmit={handleSearch} className="pb-4 md:hidden" role="search">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
+                size={18}
+                aria-hidden="true"
+              />
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => handleSearchChange(e.target.value)}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Buscar instrumento, modelo, marca..."
-                className="w-full pl-10 pr-4 py-2 bg-brand-gray border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-brand-orange"
+                className="w-full rounded-full border border-white/10 bg-white/5 py-2 pl-10 pr-4 text-sm text-foreground placeholder-zinc-500 transition-colors focus:border-brand-accent"
+                aria-label="Buscar instrumentos"
               />
             </div>
           </form>
@@ -124,10 +135,11 @@ export default function Navbar() {
         {/* Mobile Menu */}
         {isMenuOpen && (
           <motion.div
+            id="mobile-menu"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden pb-4 border-t border-brand-gray pt-4"
+            className="overflow-hidden border-t border-white/10 pb-4 pt-4 md:hidden"
           >
             {navLinks.map((link) => (
               <Link
@@ -135,10 +147,10 @@ export default function Navbar() {
                 href={link.href}
                 onClick={() => setIsMenuOpen(false)}
                 className={clsx(
-                  "block py-2 text-sm font-medium transition-colors duration-200",
+                  "block rounded-lg px-2 py-2 text-sm font-medium transition-colors duration-200",
                   pathname === link.href
-                    ? "text-brand-orange"
-                    : "text-zinc-300 hover:text-brand-orange"
+                    ? "text-brand-accent"
+                    : "text-zinc-300 hover:bg-white/5 hover:text-brand-accent"
                 )}
               >
                 {link.label}
