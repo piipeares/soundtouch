@@ -5,6 +5,7 @@ import { getInstrumentById } from "@/lib/store/instruments";
 import { generateWhatsAppLink } from "@/config/business";
 import InstrumentImage from "@/components/product/InstrumentImage";
 import Price from "@/components/product/Price";
+import FavoriteButton from "@/components/product/FavoriteButton";
 import JsonLd from "@/components/JsonLd";
 import { CATEGORY_LABELS, CONDITION_LABELS } from "@/types";
 
@@ -118,6 +119,14 @@ export default async function ProductPage({ params }: ProductPageProps) {
               <MessageCircle size={24} />
               Contactar
             </a>
+
+            {/* Favoritos (isla client; NO usa cookies() → ISR intacto, D5) */}
+            <div className="mt-4">
+              <FavoriteButton
+                instrumentId={instrument.id}
+                variant="inline"
+              />
+            </div>
           </div>
  
           {/* Features / Specs */}

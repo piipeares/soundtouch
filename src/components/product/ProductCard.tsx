@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { MessageCircle, Tag } from "lucide-react";
 import InstrumentImage from "@/components/product/InstrumentImage";
+import FavoriteButton from "@/components/product/FavoriteButton";
 import { Instrument, CATEGORY_LABELS, CONDITION_LABELS } from "@/types";
 import { formatPrice } from "@/lib/utils";
 import { generateWhatsAppLink } from "@/config/business";
@@ -55,6 +56,14 @@ export default function ProductCard({ instrument, index }: ProductCardProps) {
             -{instrument.discountPercentage}%
           </div>
         )}
+
+        {/* Corazón de favoritos (overlay, sin romper el badge) */}
+        <div className="absolute left-3 top-3">
+          <FavoriteButton
+            instrumentId={instrument.id}
+            variant="overlay"
+          />
+        </div>
 
         {/* Overlay gradient */}
         <div className="absolute inset-0 bg-gradient-to-t from-brand-black/70 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />

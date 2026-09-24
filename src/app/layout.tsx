@@ -4,6 +4,7 @@ import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { CurrencyProvider } from "@/context/CurrencyContext";
+import { AccountProvider } from "@/context/AccountContext";
 import { business } from "@/config/business";
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -52,9 +53,11 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <CurrencyProvider>
-          <Navbar />
-          <main className="flex-1">{children}</main>
-          <Footer />
+          <AccountProvider>
+            <Navbar />
+            <main className="flex-1">{children}</main>
+            <Footer />
+          </AccountProvider>
         </CurrencyProvider>
       </body>
     </html>

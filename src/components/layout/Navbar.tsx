@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Menu, X, Search, DollarSign } from "lucide-react";
+import { Menu, X, Search, DollarSign, Heart, LogOut, User } from "lucide-react";
 import { useState } from "react";
 import Logo from "./Logo";
 import { clsx } from "clsx";
 import { useCurrency } from "@/context/CurrencyContext";
+import { useAccount } from "@/context/AccountContext";
 
 const navLinks = [
   { href: "/", label: "Catálogo" },
@@ -16,24 +17,34 @@ const navLinks = [
 ];
 
 /**
- * Navbar glass (design D2 / task 4.3): translúcida con backdrop blur, logo
- * por next/link, search + currency toggle funcionando, anclas #about/#contact
- * y menú mobile con aria-expanded/aria-controls (spec premium-design).
+ * Navbar glass (design D2 / task 4.3 + task 4.6): translúcida con backdrop
+ * blur, logo por next/link, search + currency toggle funcionando, anclas
+ * #about/#contact, menú mobile con aria-expanded/aria-controls, contador de
+ * favoritos (oculto sin sesión) y menú de cuenta (ingresar / salir).
  */
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { currency, toggleCurrency } = useCurrency();
+  const { authenticated, email, favoriteIds, logout } = useAccount();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const isHomePage = pathname === "/";
+  const favoritesCount = favoriteIds.length;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const query = searchQuery.trim();
     router.push(query ? `/?search=${encodeURIComponent(query)}` : "/");
     setIsMenuOpen(false);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    setIsMenuOpen(false);
+    router.push("/");
+    router.refresh();
   };
 
   return (
@@ -80,6 +91,46 @@ export default function Navbar() {
             <DollarSign size={16} aria-hidden="true" />
             <span>{currency}</span>
           </button>
+
+          {/* Favorites (solo con sesión) */}
+          {authenticated && (
+            <Link
+              href="/favoritos"
+              className="relative inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-medium text-zinc-300 transition-colors hover:border-brand-accent/50 hover:text-brand-accent"
+              aria-label={`Favoritos (${favoritesCount})`}
+            >
+              <Heart
+                size={16}
+                aria-hidden="true"
+                className={favoritesCount > 0 ? "fill-brand-accent text-brand-accent" : ""}
+              />
+              {favoritesCount > 0 && <span>{favoritesCount}</span>}
+            </Link>
+          )}
+
+          {/* Account */}
+          {authenticated ? (
+            <div className="hidden items-center gap-2 md:flex">
+              <span className="max-w-[10rem] truncate text-sm text-zinc-400">
+                {email}
+              </span>
+              <button
+                onClick={handleLogout}
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-medium text-zinc-300 transition-colors hover:border-brand-accent/50 hover:text-brand-accent"
+              >
+                <LogOut size={16} aria-hidden="true" />
+                Salir
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className="hidden items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-medium text-zinc-300 transition-colors hover:border-brand-accent/50 hover:text-brand-accent md:inline-flex"
+            >
+              <User size={16} aria-hidden="true" />
+              Ingresar
+            </Link>
+          )}
 
           {/* Desktop Navigation */}
           <div className="hidden items-center gap-8 md:flex">
@@ -156,6 +207,43 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
+
+            {/* Favoritos mobile */}
+            {authenticated && (
+              <Link
+                href="/favoritos"
+                onClick={() => setIsMenuOpen(false)}
+                className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-zinc-300 hover:bg-white/5 hover:text-brand-accent"
+              >
+                <Heart size={16} aria-hidden="true" />
+                Favoritos
+                {favoritesCount > 0 && (
+                  <span className="rounded-full bg-brand-accent px-2 py-0.5 text-xs font-bold text-brand-black">
+                    {favoritesCount}
+                  </span>
+                )}
+              </Link>
+            )}
+
+            {/* Cuenta mobile */}
+            {authenticated ? (
+              <button
+                onClick={handleLogout}
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-medium text-zinc-300 hover:bg-white/5 hover:text-brand-accent"
+              >
+                <LogOut size={16} aria-hidden="true" />
+                Salir ({email})
+              </button>
+            ) : (
+              <Link
+                href="/login"
+                onClick={() => setIsMenuOpen(false)}
+                className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-zinc-300 hover:bg-white/5 hover:text-brand-accent"
+              >
+                <User size={16} aria-hidden="true" />
+                Ingresar
+              </Link>
+            )}
           </motion.div>
         )}
       </nav>
