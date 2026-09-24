@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import CatalogBrowser from "@/components/home/CatalogBrowser";
 import Hero from "@/components/home/Hero";
 import AboutSection from "@/components/home/AboutSection";
+import AISection from "@/components/home/AISection";
 import HowToBuySection from "@/components/home/HowToBuySection";
 import TestimonialsSection from "@/components/home/TestimonialsSection";
 import GuaranteeSection from "@/components/home/GuaranteeSection";
@@ -88,6 +89,9 @@ export default function Home() {
           </a>
         </div>
       </section>
+
+      {/* Herramienta diferencial: asistente con IA (placeholder premium) */}
+      <AISection />
 
       {/* Cómo comprar / Testimonios / Garantía / Contacto */}
       <HowToBuySection />
