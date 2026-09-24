@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { requireCustomerSession } from "@/lib/auth";
-import { getFavorites, removeFavorite } from "@/lib/store/favorites";
+import { getCustomerSession } from "@/lib/auth";
+import { removeFavorite } from "@/lib/store/favorites";
 
 export async function DELETE(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const session = await requireCustomerSession();
-  if (!session) {
+  const session = await getCustomerSession();
+  if (!session || session.role !== "customer") {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
@@ -18,7 +18,7 @@ export async function DELETE(
     return NextResponse.json({ error: "id inválido" }, { status: 400 });
   }
 
-  const favorites = removeFavorite(session.sub, clean);
+  const favorites = await removeFavorite(session.email, clean);
   revalidatePath("/favoritos");
   revalidatePath("/");
 

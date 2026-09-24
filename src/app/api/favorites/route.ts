@@ -1,21 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { requireCustomerSession } from "@/lib/auth";
+import { getCustomerSession } from "@/lib/auth";
 import { getFavorites, toggleFavorite } from "@/lib/store/favorites";
 import { readInstruments } from "@/lib/store/instruments";
 
 export async function GET() {
-  const session = await requireCustomerSession();
-  if (!session) {
+  const session = await getCustomerSession();
+  if (!session || session.role !== "customer") {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
-  const favorites = getFavorites(session.sub);
+  const favorites = getFavorites(session.email);
   return NextResponse.json({ favorites });
 }
 
 export async function POST(req: NextRequest) {
-  const session = await requireCustomerSession();
-  if (!session) {
+  const session = await getCustomerSession();
+  if (!session || session.role !== "customer") {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
@@ -44,12 +44,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const favorites = toggleFavorite(session.sub, id);
+  const favorites = await toggleFavorite(session.email, id);
   revalidatePath("/favoritos");
   revalidatePath("/");
 
+  const favorited = favorites.includes(id);
   return NextResponse.json({
-    favorited: favorites.includes(id),
+    favorited,
     favorites,
   });
 }
