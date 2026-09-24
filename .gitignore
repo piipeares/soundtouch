@@ -34,7 +34,7 @@ yarn-error.log*
 .env*
 !.env.example
 
-# runtime data (JSON store del catálogo, se auto-siembra desde src/lib/seed.ts)
+# runtime data (JSON stores auto-sembrados: catálogo, usuarios y favoritos)
 /data/
 
 # vercel
