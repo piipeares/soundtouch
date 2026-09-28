@@ -3,6 +3,7 @@
 import { Edit2, Trash2 } from "lucide-react";
 import { Instrument, CATEGORY_LABELS, CONDITION_LABELS } from "@/types";
 import { formatPrice } from "@/lib/utils";
+import { useCurrency } from "@/context/CurrencyContext";
 import InstrumentImage from "@/components/product/InstrumentImage";
 
 interface InstrumentGridProps {
@@ -21,6 +22,8 @@ export default function InstrumentGrid({
   onEdit,
   onDelete,
 }: InstrumentGridProps) {
+  const { currency } = useCurrency();
+
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {instruments.map((instrument) => (
@@ -52,7 +55,7 @@ export default function InstrumentGrid({
               {CATEGORY_LABELS[instrument.category]}
             </p>
             <p className="mt-2 text-sm font-semibold text-foreground">
-              {formatPrice(instrument.price)}
+              {formatPrice(instrument.price, currency)}
             </p>
 
             <div className="mt-4 flex gap-2">

@@ -53,14 +53,14 @@ export default function Hero() {
             href={whatsappLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-brand-accent to-brand-accent-deep px-7 py-3.5 font-semibold text-brand-black shadow-glow transition-opacity hover:opacity-90 sm:w-auto"
+            className="inline-flex w-auto items-center justify-center gap-2 rounded-full bg-gradient-to-r from-brand-accent to-brand-accent-deep px-6 py-3 font-semibold text-brand-black shadow-glow transition-opacity hover:opacity-90"
           >
-            <MessageCircle size={20} aria-hidden="true" />
+            <MessageCircle size={18} aria-hidden="true" />
             Consultar por WhatsApp
           </a>
           <Link
             href="#catalogo"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/10 px-7 py-3.5 font-semibold text-white backdrop-blur-sm transition-colors hover:border-brand-accent/50 hover:text-brand-accent"
+            className="inline-flex w-auto items-center justify-center gap-2 rounded-full border border-white/15 bg-white/10 px-6 py-3 font-semibold text-white backdrop-blur-sm transition-colors hover:border-brand-accent/50 hover:text-brand-accent"
           >
             Ver catálogo
             <ArrowDown size={18} aria-hidden="true" />

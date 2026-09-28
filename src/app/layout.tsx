@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, Fraunces } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import HideOnAdmin from "@/components/layout/HideOnAdmin";
 import { CurrencyProvider } from "@/context/CurrencyContext";
 import { AccountProvider } from "@/context/AccountContext";
 import { business } from "@/config/business";
@@ -54,9 +55,13 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <CurrencyProvider>
           <AccountProvider>
-            <Navbar />
+            <HideOnAdmin>
+              <Navbar />
+            </HideOnAdmin>
             <main className="flex-1">{children}</main>
-            <Footer />
+            <HideOnAdmin>
+              <Footer />
+            </HideOnAdmin>
           </AccountProvider>
         </CurrencyProvider>
       </body>

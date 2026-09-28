@@ -11,12 +11,15 @@ import {
 interface AccountState {
   authenticated: boolean;
   email: string | null;
+  /** Nombre de perfil editable (null si la cuenta no lo seteó). */
+  name: string | null;
   favoriteIds: string[];
 }
 
 interface AccountContextType extends AccountState {
   isFavorite: (instrumentId: string) => boolean;
   toggleFavorite: (instrumentId: string) => Promise<void>;
+  updateName: (name: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -37,6 +40,7 @@ interface AccountContextType extends AccountState {
 const NEUTRAL_STATE: AccountState = {
   authenticated: false,
   email: null,
+  name: null,
   favoriteIds: [],
 };
 
@@ -65,6 +69,7 @@ const defaultContext: AccountContextType = {
   ...NEUTRAL_STATE,
   isFavorite: () => false,
   toggleFavorite: async () => {},
+  updateName: async () => {},
   logout: async () => {},
   refresh: async () => {},
 };
@@ -93,7 +98,11 @@ export function AccountProvider({
         setState({ ...NEUTRAL_STATE });
         return;
       }
-      const auth = (await authRes.json()) as { authenticated: boolean; email: string };
+      const auth = (await authRes.json()) as {
+        authenticated: boolean;
+        email: string;
+        name?: string | null;
+      };
       const fav = favRes.ok
         ? ((await favRes.json()) as { favorites: string[] })
         : { favorites: [] };
@@ -101,6 +110,7 @@ export function AccountProvider({
       setState({
         authenticated: auth.authenticated,
         email: auth.email ?? null,
+        name: auth.name ?? null,
         favoriteIds: Array.isArray(fav.favorites) ? fav.favorites : [],
       });
     } catch {
@@ -147,6 +157,34 @@ export function AccountProvider({
     }
   }, []);
 
+  const updateName = useCallback(async (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === state.name) return;
+    const prev = state;
+    // Optimista: aplicar el nombre nuevo primero, revertir si falla.
+    setState({ ...prev, name: trimmed });
+    try {
+      const res = await fetch("/api/auth/customer", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed }),
+      });
+      if (res.status === 401) {
+        setState({ ...NEUTRAL_STATE });
+        window.location.assign("/login");
+        return;
+      }
+      if (!res.ok) {
+        setState({ ...prev });
+        return;
+      }
+      const data = (await res.json()) as { name?: string };
+      setState({ ...state, name: data.name ?? trimmed });
+    } catch {
+      setState({ ...prev });
+    }
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await fetch("/api/auth/customer", { method: "DELETE" });
@@ -167,6 +205,7 @@ export function AccountProvider({
         ...account,
         isFavorite,
         toggleFavorite,
+        updateName,
         logout,
         refresh,
       }}

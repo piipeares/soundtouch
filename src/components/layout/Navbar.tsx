@@ -16,6 +16,13 @@ const navLinks = [
   { href: "/#contact", label: "Contacto" },
 ];
 
+/** Nombre visible del usuario: nombre de perfil si existe, si no el email. */
+function displayName(name: string | null, email: string | null): string {
+  const trimmed = name?.trim();
+  if (trimmed) return trimmed.split(" ")[0];
+  return email ?? "músico";
+}
+
 /**
  * Navbar glass (design D2 / task 4.3 + task 4.6): translúcida con backdrop
  * blur, logo por next/link, search + currency toggle funcionando, anclas
@@ -26,7 +33,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { currency, toggleCurrency } = useCurrency();
-  const { authenticated, email, favoriteIds, logout } = useAccount();
+  const { authenticated, email, name, favoriteIds, logout } = useAccount();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -36,8 +43,24 @@ export default function Navbar() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const query = searchQuery.trim();
-    router.push(query ? `/?search=${encodeURIComponent(query)}` : "/");
+    const target = query
+      ? `/?search=${encodeURIComponent(query)}#catalogo`
+      : "/#catalogo";
+    void router.push(target);
     setIsMenuOpen(false);
+
+    // El hash #catalogo scrollea al catálogo al navegar, pero si ya estamos
+    // en el home (misma ruta, solo cambia el query/hash) el router puede
+    // ignorar el scroll → fallback explícito. El <section id="catalogo">
+    // tiene scroll-mt-24, así que scrollIntoView respeta el offset.
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        document.getElementById("catalogo")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 50);
+    });
   };
 
   const handleLogout = async () => {
@@ -111,9 +134,13 @@ export default function Navbar() {
           {/* Account */}
           {authenticated ? (
             <div className="hidden items-center gap-2 md:flex">
-              <span className="max-w-[10rem] truncate text-sm text-zinc-400">
-                {email}
-              </span>
+              <Link
+                href="/favoritos"
+                className="max-w-[10rem] truncate text-sm font-medium text-zinc-300 transition-colors hover:text-brand-accent"
+                title="Ir a mi perfil"
+              >
+                {displayName(name, email)}
+              </Link>
               <button
                 onClick={handleLogout}
                 className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-medium text-zinc-300 transition-colors hover:border-brand-accent/50 hover:text-brand-accent"
@@ -227,13 +254,23 @@ export default function Navbar() {
 
             {/* Cuenta mobile */}
             {authenticated ? (
-              <button
-                onClick={handleLogout}
-                className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-medium text-zinc-300 hover:bg-white/5 hover:text-brand-accent"
-              >
-                <LogOut size={16} aria-hidden="true" />
-                Salir ({email})
-              </button>
+              <>
+                <Link
+                  href="/favoritos"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-zinc-300 hover:bg-white/5 hover:text-brand-accent"
+                >
+                  <User size={16} aria-hidden="true" />
+                  Mi perfil ({displayName(name, email)})
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-medium text-zinc-300 hover:bg-white/5 hover:text-brand-accent"
+                >
+                  <LogOut size={16} aria-hidden="true" />
+                  Salir
+                </button>
+              </>
             ) : (
               <Link
                 href="/login"

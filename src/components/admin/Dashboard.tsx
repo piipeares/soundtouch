@@ -1,9 +1,10 @@
 "use client";
 
-import { Plus, LogOut } from "lucide-react";
+import { Plus, LogOut, DollarSign } from "lucide-react";
 import { Instrument } from "@/types";
 import Logo from "@/components/layout/Logo";
 import InstrumentGrid from "@/components/admin/InstrumentGrid";
+import { useCurrency } from "@/context/CurrencyContext";
 
 interface DashboardProps {
   instruments: Instrument[];
@@ -27,6 +28,8 @@ export default function Dashboard({
   onEdit,
   onDelete,
 }: DashboardProps) {
+  const { currency, toggleCurrency } = useCurrency();
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 border-b border-white/10 bg-white/5 backdrop-blur-xl">
@@ -34,6 +37,14 @@ export default function Dashboard({
           <div className="flex h-16 items-center justify-between gap-4">
             <Logo />
             <div className="flex items-center gap-3">
+              <button
+                onClick={toggleCurrency}
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-medium text-zinc-300 transition-colors hover:border-brand-accent/50 hover:text-brand-accent"
+                aria-label={`Cambiar moneda (actual: ${currency})`}
+              >
+                <DollarSign size={16} aria-hidden="true" />
+                <span>{currency}</span>
+              </button>
               <button
                 onClick={onNew}
                 className="inline-flex items-center gap-2 rounded-full bg-brand-accent px-4 py-2 text-sm font-semibold text-brand-black transition-colors hover:bg-brand-accent-bright"

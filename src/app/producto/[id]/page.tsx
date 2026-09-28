@@ -6,6 +6,7 @@ import { generateWhatsAppLink } from "@/config/business";
 import InstrumentImage from "@/components/product/InstrumentImage";
 import Price from "@/components/product/Price";
 import FavoriteButton from "@/components/product/FavoriteButton";
+import TrackView from "@/components/product/TrackView";
 import JsonLd from "@/components/JsonLd";
 import { CATEGORY_LABELS, CONDITION_LABELS } from "@/types";
 
@@ -46,6 +47,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
  
   return (
     <article className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Registra la vista en "vistos recientemente" (client island, sin
+          cookies → ISR intacto, design D5) */}
+      <TrackView instrumentId={instrument.id} />
       <JsonLd
         data={{
           "@context": "https://schema.org",

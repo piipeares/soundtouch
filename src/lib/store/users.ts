@@ -24,6 +24,8 @@ export interface User {
   id: string;
   email: string;
   passwordHash: string;
+  /** Nombre de perfil editable por el usuario (opcional, back-compat). */
+  name?: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -146,6 +148,31 @@ export function createUser(email: string, passwordHash: string): Promise<User> {
     };
     writeRaw([...users, user]);
     return user;
+  });
+}
+
+/**
+ * Actualiza el nombre de perfil de un usuario (trim + límite de 60 chars).
+ * Devuelve el usuario actualizado o undefined si el email no existe.
+ */
+export function updateUserName(
+  email: string,
+  name: string
+): Promise<User | undefined> {
+  const trimmed = name.trim().slice(0, 60);
+  return withWriteLock(() => {
+    const users = readRaw();
+    const index = users.findIndex((user) => user.email === normalizeEmail(email));
+    if (index === -1) return undefined;
+    const updated: User = {
+      ...users[index],
+      name: trimmed,
+      updatedAt: Date.now(),
+    };
+    const next = [...users];
+    next[index] = updated;
+    writeRaw(next);
+    return updated;
   });
 }
 

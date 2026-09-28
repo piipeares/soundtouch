@@ -13,6 +13,7 @@ import {
   ensureDemoUser,
   getUserByEmail,
   normalizeEmail,
+  updateUserName,
 } from "@/lib/store/users";
 
 // Cookie customer_session: httpOnly + sameSite strict + secure en prod,
@@ -47,7 +48,7 @@ function isValidEmail(email: string): boolean {
 
 /**
  * GET /api/auth/customer — verifica la sesión customer.
- * 200 {authenticated:true, email} con cookie customer_session válida;
+ * 200 {authenticated:true, email, name} con cookie customer_session válida;
  * 401 {authenticated:false} sin ella o vencida (spec: sesión expirada →
  * el cliente redirige a /login).
  */
@@ -56,7 +57,12 @@ export async function GET() {
   if (!session) {
     return NextResponse.json({ authenticated: false }, { status: 401 });
   }
-  return NextResponse.json({ authenticated: true, email: session.email });
+  const user = getUserByEmail(session.email);
+  return NextResponse.json({
+    authenticated: true,
+    email: session.email,
+    name: user?.name ?? null,
+  });
 }
 
 /**
@@ -162,4 +168,47 @@ export async function DELETE() {
   const cookieStore = await cookies();
   cookieStore.delete(CUSTOMER_SESSION_COOKIE);
   return NextResponse.json({ success: true });
+}
+
+/**
+ * PATCH /api/auth/customer — actualiza el nombre de perfil de la sesión.
+ * Requiere sesión customer (401 si no). Body { name: string } — trim + máx
+ * 60 chars; 400 si falta o es vacío. Devuelve { ok, email, name }.
+ */
+export async function PATCH(request: NextRequest) {
+  const session = await getCustomerSession();
+  if (!session) {
+    return NextResponse.json(
+      { error: "No autorizado", authenticated: false },
+      { status: 401 }
+    );
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: "JSON inválido en el body" },
+      { status: 400 }
+    );
+  }
+
+  const { name } = (body ?? {}) as Record<string, unknown>;
+  if (typeof name !== "string" || name.trim().length === 0) {
+    return NextResponse.json(
+      { error: "El nombre no puede estar vacío" },
+      { status: 400 }
+    );
+  }
+
+  const user = await updateUserName(session.email, name);
+  if (!user) {
+    return NextResponse.json(
+      { error: "Cuenta no encontrada" },
+      { status: 404 }
+    );
+  }
+
+  return NextResponse.json({ ok: true, email: user.email, name: user.name });
 }

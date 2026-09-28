@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { useAccount } from "@/context/AccountContext";
 
 type Mode = "login" | "register";
 
@@ -33,6 +34,7 @@ function isSafePath(value: string): boolean {
  */
 export default function AuthForm({ returnTo }: AuthFormProps) {
   const router = useRouter();
+  const { refresh } = useAccount();
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -69,6 +71,10 @@ export default function AuthForm({ returnTo }: AuthFormProps) {
       });
 
       if (res.ok) {
+        // Re-sincronizar el AccountContext (navbar, corazones, guardados):
+        // el provider se hidrata en mount, pero tras login/registro su estado
+        // quedaría congelado en logged-out si no refrescamos explícitamente.
+        await refresh();
         router.push(destination);
         router.refresh();
         return;
