@@ -11,6 +11,23 @@ export type InstrumentCategory =
 
 export type Condition = "nuevo" | "usado" | "usado-casi-nuevo" | "reacondicionado";
 
+/**
+ * Tipo fino usado por SoundMatch para mapear un instrumento a un rol sonoro.
+ * Es independiente de la categoría comercial: una batería electrónica y una
+ * acústica comparten `drums`, y un piano y un synth comparten `keys`.
+ */
+export type InstrumentFineType =
+  | "electric"
+  | "acoustic"
+  | "bass"
+  | "keys"
+  | "drums"
+  | "vocal"
+  | "reverb"
+  | "fx"
+  | "monitoring"
+  | "accessory";
+
 export interface Instrument {
   id: string;
   name: string;
@@ -25,6 +42,10 @@ export interface Instrument {
   condition: Condition;
   offerPrice?: number;
   discountPercentage?: number;
+  /** Override explícito para el motor (útil en instrumentos conceptuales). */
+  fineType?: InstrumentFineType;
+  /** Rasgos sonoros explícitos; si existen, reemplazan la inferencia por texto. */
+  traits?: string[];
 }
 
 // Utils para categorías

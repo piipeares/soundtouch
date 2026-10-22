@@ -1,4 +1,5 @@
-import { Instrument } from "@/types";
+import { Instrument, InstrumentFineType } from "@/types";
+import songCount from "@/data/song-count.json";
 
 /**
  * SoundMatch — motor de recomendación musical de SoundTouch.
@@ -22,17 +23,7 @@ import { Instrument } from "@/types";
 // ---------------------------------------------------------------------------
 
 /** Tipo fino de instrumento (más específico que la categoría comercial). */
-export type FineType =
-  | "electric"
-  | "acoustic"
-  | "bass"
-  | "keys"
-  | "drums"
-  | "vocal"
-  | "reverb"
-  | "fx"
-  | "monitoring"
-  | "accessory";
+export type FineType = InstrumentFineType;
 
 type Role = Exclude<FineType, "accessory">;
 
@@ -59,15 +50,28 @@ export type GenreKey =
   | "bossa"
   | "ska";
 
-interface SongProfile {
+export interface SongProfile {
   title: string;
   artist: string;
-  year: number;
+  year?: number;
   genre: GenreKey;
   roles: Role[];
   tags: string[];
   /** Frase corta que describe el sonido; se usa en el resumen. */
   signature: string;
+  /**
+   * true cuando el perfil se infiere del género (dataset masivo) en vez de
+   * estar curado canción por canción. Baja la confianza y se muestra distinto
+   * en la UI.
+   */
+  estimated?: boolean;
+}
+
+/** Entrada compacta del dataset generado: el resto se expande por género. */
+export interface GeneratedSong {
+  title: string;
+  artist: string;
+  genre: GenreKey;
 }
 
 interface GenreProfile {
@@ -90,8 +94,9 @@ export interface RecommendResult {
   matchedSong: {
     title: string;
     artist: string;
-    year: number;
+    year: number | null;
     genre: string;
+    estimated: boolean;
   } | null;
   detectedGenre: string;
   confidence: number;
@@ -157,7 +162,7 @@ const GENRE_LABELS: Record<GenreKey, string> = {
 // Knowledge base — canciones icónicas
 // ---------------------------------------------------------------------------
 
-const SONGS: SongProfile[] = [
+export const CURATED_SONGS: SongProfile[] = [
   // ------------------------------- Rock -------------------------------
   {
     title: "Stairway to Heaven",
@@ -1249,9 +1254,31 @@ export const EXAMPLE_QUERIES = [
   "Wonderwall",
 ] as const;
 
+/**
+ * Expande las canciones del dataset con el perfil de su género. El JSON
+ * generado guarda solo title/artist/genre para mantenerse chico y evitar
+ * duplicar roles/tags que ya viven en GENRE_PROFILES.
+ */
+export function expandGeneratedSongs(songs: GeneratedSong[]): SongProfile[] {
+  return songs
+    .filter((song) => Boolean(GENRE_PROFILES[song.genre]))
+    .map((song) => {
+      const profile = GENRE_PROFILES[song.genre];
+      return {
+        title: song.title,
+        artist: song.artist,
+        genre: song.genre,
+        roles: profile.roles,
+        tags: profile.tags,
+        signature: profile.signature,
+        estimated: true,
+      };
+    });
+}
+
 /** Métricas reales del motor (se muestran en la sección para dar contexto). */
 export const SOUNDMATCH_STATS = {
-  songs: SONGS.length,
+  songs: CURATED_SONGS.length + songCount.generated,
   genres: Object.keys(GENRE_PROFILES).length,
 } as const;
 
@@ -1264,7 +1291,7 @@ function normalize(text: string): string {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -1282,6 +1309,8 @@ function textOf(instrument: Instrument): string {
 // ---------------------------------------------------------------------------
 
 function classifyInstrument(instrument: Instrument): FineType {
+  if (instrument.fineType) return instrument.fineType;
+
   switch (instrument.category) {
     case "guitarra-electrica":
       return "electric";
@@ -1320,6 +1349,10 @@ function classifyInstrument(instrument: Instrument): FineType {
 
 /** Rasgos sonoros inferidos de marca/modelo/descripción. */
 function deriveTraits(instrument: Instrument): Set<string> {
+  if (instrument.traits?.length) {
+    return new Set(instrument.traits);
+  }
+
   const text = textOf(instrument);
   const traits = new Set<string>();
 
@@ -1437,32 +1470,49 @@ interface SongMatch {
   score: number;
 }
 
-function findBestSong(query: string): SongMatch | null {
+function findBestSong(
+  query: string,
+  songs: SongProfile[]
+): SongMatch | null {
   const q = normalize(query);
   if (!q) return null;
 
+  const qTokens = q.split(" ").filter((token) => token.length > 2);
   let best: SongMatch | null = null;
 
-  for (const song of SONGS) {
+  for (const song of songs) {
     const title = normalize(song.title);
     const artist = normalize(song.artist);
     let score = 0;
 
-    if (title === q) {
+    // Artista exacto gana sobre título exacto: "Nirvana" o "Daft Punk" son
+    // consultas de banda, no canciones homónimas de otro artista.
+    if (artist === q) {
       score = 100;
-    } else if (title.includes(q) || (q.length >= 6 && q.includes(title))) {
+    } else if (title === q) {
+      score = 98;
+    } else if (
+      title.length > 0 &&
+      (title.includes(q) || (q.length >= 6 && q.includes(title)))
+    ) {
       score = 90;
-    } else if (artist === q) {
-      score = 86;
     } else {
-      const qTokens = q.split(" ").filter((token) => token.length > 2);
-      const haystack = `${title} ${artist}`;
-      const hits = qTokens.filter((token) => haystack.includes(token)).length;
-      if (qTokens.length > 0) {
+      // Con miles de canciones, un solo token ("love", "night") generaría
+      // matches falsos. Solo usamos coincidencia parcial con 2+ tokens.
+      if (qTokens.length >= 2) {
+        const haystack = `${title} ${artist}`;
+        const hits = qTokens.filter((token) => haystack.includes(token)).length;
         score = Math.round((hits / qTokens.length) * 70);
       }
-      if (q.length >= 3 && artist.includes(q)) {
-        score = Math.max(score, 78);
+
+      if (q.length >= 3) {
+        const artistTokens = artist.split(" ");
+        if (
+          artist.startsWith(`${q} `) ||
+          artistTokens.includes(q)
+        ) {
+          score = Math.max(score, 78);
+        }
       }
     }
 
@@ -1472,6 +1522,14 @@ function findBestSong(query: string): SongMatch | null {
   }
 
   return best && best.score >= 40 ? best : null;
+}
+
+function detectExactGenre(query: string): GenreKey | null {
+  const q = normalize(query);
+  for (const [genre, keywords] of GENRE_KEYWORDS) {
+    if (keywords.includes(q)) return genre;
+  }
+  return null;
 }
 
 function detectGenre(query: string): GenreKey | null {
@@ -1634,7 +1692,9 @@ function buildSummary(
   }
 
   if (parts.song) {
-    return `«${parts.song.title}» de ${parts.song.artist} (${parts.song.year}) se construye con ${list}. ${parts.signature} Esta es la combinación del catálogo que más se le acerca.`;
+    const year = parts.song.year ? ` (${parts.song.year})` : "";
+    const verb = parts.song.estimated ? "se acerca a" : "se construye con";
+    return `«${parts.song.title}» de ${parts.song.artist}${year} ${verb} ${list}. ${parts.signature} Esta es la combinación del catálogo que más se le acerca.`;
   }
 
   return `Para ${parts.genreLabel.toLowerCase()}, la base es ${list}. ${parts.signature} Esta es la combinación del catálogo que mejor se adapta.`;
@@ -1646,20 +1706,20 @@ function buildSummary(
  */
 export function recommendInstruments(
   query: string,
-  instruments: Instrument[]
+  instruments: Instrument[],
+  songs: SongProfile[] = CURATED_SONGS
 ): RecommendResult {
   const cleaned = query.trim();
   if (!cleaned || instruments.length === 0) {
     return emptyResult(cleaned);
   }
 
-  const directGenre = detectGenre(cleaned);
-
-  const songMatch =
-    directGenre && normalize(cleaned).split(" ").length <= 2
-      ? null
-      : findBestSong(cleaned);
-  const genre = directGenre ?? (songMatch ? songMatch.song.genre : null);
+  // Un género exacto ("punk", "hard rock", "bossa nova") gana siempre.
+  // Si no, primero buscamos canción/artista: así "Daft Punk" no se detecta
+  // como género punk. Recién después probamos keywords sueltas ("quiero rock").
+  const exactGenre = detectExactGenre(cleaned);
+  const songMatch = exactGenre ? null : findBestSong(cleaned, songs);
+  const genre = exactGenre ?? (songMatch ? songMatch.song.genre : detectGenre(cleaned));
   const genreProfile = genre ? GENRE_PROFILES[genre] : null;
 
   const roles: Role[] = songMatch
@@ -1747,7 +1807,11 @@ export function recommendInstruments(
   });
 
   const confidence = songMatch
-    ? songMatch.score >= 85
+    ? songMatch.song.estimated
+      ? songMatch.score >= 85
+        ? 88
+        : 84
+      : songMatch.score >= 85
       ? 97
       : songMatch.score >= 60
       ? 91
@@ -1768,8 +1832,9 @@ export function recommendInstruments(
       ? {
           title: songMatch.song.title,
           artist: songMatch.song.artist,
-          year: songMatch.song.year,
+          year: songMatch.song.year ?? null,
           genre: GENRE_LABELS[songMatch.song.genre],
+          estimated: songMatch.song.estimated ?? false,
         }
       : null,
     detectedGenre: genreLabel,

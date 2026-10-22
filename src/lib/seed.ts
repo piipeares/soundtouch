@@ -1,4 +1,12 @@
 import { Instrument } from "@/types";
+import fictionalInstrumentsRaw from "@/data/fictional-instruments.json";
+
+/**
+ * Catálogo conceptual: instrumentos ficticios con `fineType`/`traits`
+ * explícitos. Se suman a los modelos reales para que SoundMatch tenga
+ * variedad suficiente en todos los roles sonoros.
+ */
+const fictionalInstruments = fictionalInstrumentsRaw as unknown as Instrument[];
 
 // Semilla inicial del catálogo. Este módulo exporta SOLO el array `instruments`;
 // los helpers de búsqueda/filtrado viven en src/lib/catalog.ts y el acceso a
@@ -198,4 +206,5 @@ export const instruments: Instrument[] = [
     model: "GS525B",
     condition: "nuevo",
   },
+  ...fictionalInstruments,
 ];

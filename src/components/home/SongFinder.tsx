@@ -467,7 +467,11 @@ function ResultPanel({
         <div className="relative flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-accent">
-              {matchedSong ? "Canción identificada" : "Análisis por perfil"}
+              {matchedSong
+                ? matchedSong.estimated
+                  ? "Perfil estimado"
+                  : "Canción identificada"
+                : "Análisis por perfil"}
             </p>
 
             <h3 className="mt-2 font-display text-2xl font-bold text-foreground md:text-3xl">
@@ -476,7 +480,9 @@ function ResultPanel({
 
             <p className="mt-1 text-sm text-zinc-400">
               {matchedSong
-                ? `${matchedSong.artist} · ${matchedSong.year} · ${matchedSong.genre}`
+                ? `${matchedSong.artist}${
+                    matchedSong.year ? ` · ${matchedSong.year}` : ""
+                  } · ${matchedSong.genre}`
                 : fallback
                 ? "No es una coincidencia exacta: es la mejor aproximación del catálogo."
                 : "Combinación armada a partir del estilo detectado."}

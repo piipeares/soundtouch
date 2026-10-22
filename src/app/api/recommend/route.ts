@@ -1,6 +1,13 @@
+import generatedSongsRaw from "@/data/songs.generated.json";
 import { instruments as seedInstruments } from "@/lib/seed";
 import { readInstruments } from "@/lib/store/instruments";
-import { recommendInstruments } from "@/lib/songMatcher";
+import {
+  CURATED_SONGS,
+  expandGeneratedSongs,
+  recommendInstruments,
+  type GeneratedSong,
+} from "@/lib/songMatcher";
+import type { SongProfile } from "@/lib/songMatcher";
 import type { Instrument } from "@/types";
 
 /**
@@ -14,6 +21,16 @@ import type { Instrument } from "@/types";
  * ejemplo en un runtime serverless de solo lectura), cae al seed en memoria.
  * Nunca depende de servicios externos ni de API keys.
  */
+
+/**
+ * Base curada (100 canciones con roles/tags a medida) + dataset masivo
+ * (~3.000 canciones con perfil estimado por género). Se arma una sola vez
+ * por proceso: el JSON no viaja al cliente.
+ */
+const ALL_SONGS: SongProfile[] = [
+  ...CURATED_SONGS,
+  ...expandGeneratedSongs(generatedSongsRaw as unknown as GeneratedSong[]),
+];
 
 function catalog(): Instrument[] {
   try {
@@ -67,5 +84,5 @@ export async function POST(request: Request) {
     );
   }
 
-  return json(recommendInstruments(query, catalog()));
+  return json(recommendInstruments(query, catalog(), ALL_SONGS));
 }

@@ -17,6 +17,7 @@ npm run build   # producción
 npm run start   # servir build
 npm run lint    # ESLint
 npx tsc --noEmit # typecheck
+npm run songs:generate # regenera la base masiva de SoundMatch
 ```
 
 ## Configuración (`.env`)
@@ -36,9 +37,17 @@ Generar secreto: `node -e "console.log(crypto.randomBytes(32).toString('base64ur
 
 ## Datos y persistencia
 
-- **Seed**: `src/lib/seed.ts` — 15 instrumentos iniciales.
+- **Seed**: `src/lib/seed.ts` — 15 instrumentos reales + 40 conceptuales (ficticios) con `fineType`/`traits` explícitos.
 - **Store**: `src/lib/store/instruments.ts` — lee/escribe `data/instruments.json` (gitignored, auto-seed/reseed la primera vez). API REST en `/api/instruments`.
 - **Límite conocido**: el store JSON es single-process. No apto para serverless multi-instancia (Vercel) sin migrar a una BD (Supabase/Postgres es el siguiente paso). La home usa ISR (revalidate 60 s) + `revalidatePath("/")` tras writes.
+
+## SoundMatch
+
+- **Base curada**: 100 canciones con roles/tags a medida en `src/lib/songMatcher.ts`.
+- **Base masiva**: `src/data/songs.generated.json` — 3.040 canciones con perfil estimado por género.
+- **Regenerar**: `npm run songs:generate` descarga el dataset público Spotify Tracks (114k) a `data/` (gitignored), lo mapea a los 21 géneros del motor y reescribe el JSON. No requiere API keys.
+- **Runtime**: `POST /api/recommend` no llama servicios externos. Si el endpoint falla, el cliente cae a la base curada.
+- **Instrumentos conceptuales**: `src/data/fictional-instruments.json`, sumados al seed para cubrir todos los roles sonoros.
 
 ## Estructura
 
