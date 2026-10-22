@@ -52,10 +52,23 @@ function isInstrumentArray(value: unknown): value is Instrument[] {
   );
 }
 
-/** Siembra (o re-siembra) el archivo con los datos de seed.ts. */
+/**
+ * Siembra (o re-siembra) el archivo con los datos de seed.ts.
+ *
+ * En Vercel/serverless el filesystem es de solo lectura: si no se puede
+ * persistir, devolvemos el seed en memoria para que las páginas y fichas
+ * sigan renderizando. El store persistente sigue siendo single-process.
+ */
 function seedStore(): Instrument[] {
-  mkdirSync(DATA_DIR, { recursive: true });
-  writeFileSync(DATA_FILE, JSON.stringify(seedInstruments, null, 2), "utf8");
+  try {
+    mkdirSync(DATA_DIR, { recursive: true });
+    writeFileSync(DATA_FILE, JSON.stringify(seedInstruments, null, 2), "utf8");
+  } catch (error) {
+    console.warn(
+      "[store] no se pudo persistir el seed (filesystem read-only); usando seed en memoria:",
+      error
+    );
+  }
   return [...seedInstruments];
 }
 

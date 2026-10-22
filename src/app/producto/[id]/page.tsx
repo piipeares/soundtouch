@@ -28,7 +28,9 @@ export async function generateMetadata({ params }: ProductPageProps) {
     openGraph: {
       title: instrument.name,
       description: instrument.description,
-      images: [instrument.image],
+      // Los instrumentos conceptuales no tienen foto: omitir `images` evita
+      // que Next intente resolver una URL vacía en producción.
+      ...(instrument.image ? { images: [instrument.image] } : {}),
     },
   };
 }
@@ -58,7 +60,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
           description: instrument.description,
           brand: { "@type": "Brand", name: instrument.brand },
           category: CATEGORY_LABELS[instrument.category],
-          image: instrument.image,
+          ...(instrument.image ? { image: instrument.image } : {}),
           offers: {
             "@type": "Offer",
             price: instrument.offerPrice ?? instrument.price,
