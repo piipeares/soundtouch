@@ -111,6 +111,42 @@ body {
   border: 1px solid rgb(255 255 255 / 0.08);
 }
 
+/* Grilla técnica sutil (SoundMatch): líneas 1px con máscara radial. */
+.bg-grid-faint {
+  background-image: linear-gradient(
+      rgb(255 255 255 / 0.045) 1px,
+      transparent 1px
+    ),
+    linear-gradient(90deg, rgb(255 255 255 / 0.045) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(
+    ellipse 70% 60% at 50% 42%,
+    black,
+    transparent 75%
+  );
+  -webkit-mask-image: radial-gradient(
+    ellipse 70% 60% at 50% 42%,
+    black,
+    transparent 75%
+  );
+}
+
+/* Ecualizador del panel de análisis (SoundMatch). */
+@keyframes eq-bounce {
+  0%,
+  100% {
+    transform: scaleY(0.28);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.animate-eq {
+  transform-origin: bottom;
+  animation: eq-bounce 0.9s ease-in-out infinite;
+}
+
 /* ============================================================
    A11y: focus visible consistente (spec premium-design)
    ============================================================ */
@@ -169,7 +205,11 @@ body {
     scroll-behavior: auto;
   }
   .animate-hero-rise,
-  .animate-hero-fade {
+  .animate-hero-fade,
+  .animate-eq {
     animation: none;
+  }
+  .animate-eq {
+    transform: scaleY(0.7);
   }
 }

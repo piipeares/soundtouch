@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { MessageCircle, ArrowDown } from "lucide-react";
+import { MessageCircle, ArrowDown, Sparkles } from "lucide-react";
 import { business, generateWhatsAppLink } from "@/config/business";
 
 /**
@@ -58,6 +58,13 @@ export default function Hero() {
             <MessageCircle size={18} aria-hidden="true" />
             Consultar por WhatsApp
           </a>
+          <Link
+            href="#asistente"
+            className="inline-flex w-auto items-center justify-center gap-2 rounded-full border border-brand-accent/40 bg-brand-accent/10 px-6 py-3 font-semibold text-brand-accent backdrop-blur-sm transition-colors hover:bg-brand-accent/20"
+          >
+            <Sparkles size={18} aria-hidden="true" />
+            Probar SoundMatch
+          </Link>
           <Link
             href="#catalogo"
             className="inline-flex w-auto items-center justify-center gap-2 rounded-full border border-white/15 bg-white/10 px-6 py-3 font-semibold text-white backdrop-blur-sm transition-colors hover:border-brand-accent/50 hover:text-brand-accent"

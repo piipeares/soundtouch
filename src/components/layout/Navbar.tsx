@@ -3,14 +3,21 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Menu, X, Search, DollarSign, Heart, LogOut, User } from "lucide-react";
+import { Menu, X, Search, DollarSign, Heart, LogOut, User, Sparkles } from "lucide-react";
 import { useState } from "react";
 import Logo from "./Logo";
 import { clsx } from "clsx";
 import { useCurrency } from "@/context/CurrencyContext";
 import { useAccount } from "@/context/AccountContext";
 
-const navLinks = [
+interface NavLink {
+  href: string;
+  label: string;
+  highlight?: boolean;
+}
+
+const navLinks: NavLink[] = [
+  { href: "/#asistente", label: "SoundMatch AI", highlight: true },
   { href: "/", label: "Catálogo" },
   { href: "/#about", label: "Nosotros" },
   { href: "/#contact", label: "Contacto" },
@@ -160,18 +167,21 @@ export default function Navbar() {
           )}
 
           {/* Desktop Navigation */}
-          <div className="hidden items-center gap-8 md:flex">
+          <div className="hidden items-center gap-5 md:flex">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 className={clsx(
-                  "text-sm font-medium transition-colors duration-200",
-                  pathname === link.href
+                  "inline-flex items-center gap-1.5 text-sm font-medium transition-colors duration-200",
+                  link.highlight
+                    ? "rounded-full border border-brand-accent/40 bg-brand-accent/10 px-3 py-1.5 font-semibold text-brand-accent hover:bg-brand-accent/20"
+                    : pathname === link.href
                     ? "text-brand-accent"
                     : "text-zinc-300 hover:text-brand-accent"
                 )}
               >
+                {link.highlight && <Sparkles size={14} aria-hidden="true" />}
                 {link.label}
               </Link>
             ))}
@@ -225,12 +235,15 @@ export default function Navbar() {
                 href={link.href}
                 onClick={() => setIsMenuOpen(false)}
                 className={clsx(
-                  "block rounded-lg px-2 py-2 text-sm font-medium transition-colors duration-200",
-                  pathname === link.href
-                    ? "text-brand-accent"
-                    : "text-zinc-300 hover:bg-white/5 hover:text-brand-accent"
+                  "rounded-lg px-2 py-2 text-sm font-medium transition-colors duration-200",
+                  link.highlight
+                    ? "mb-1 flex items-center gap-2 rounded-xl border border-brand-accent/40 bg-brand-accent/10 font-semibold text-brand-accent"
+                    : pathname === link.href
+                    ? "block text-brand-accent"
+                    : "block text-zinc-300 hover:bg-white/5 hover:text-brand-accent"
                 )}
               >
+                {link.highlight && <Sparkles size={16} aria-hidden="true" />}
                 {link.label}
               </Link>
             ))}
