@@ -6,6 +6,7 @@ import {
   createSessionToken,
   getCustomerSession,
   hashPassword,
+  isSessionConfigured,
   verifyPassword,
 } from "@/lib/auth";
 import {
@@ -79,6 +80,18 @@ export async function GET() {
  * Las respuestas NUNCA exponen passwordHash ni datos de otros usuarios.
  */
 export async function POST(request: NextRequest) {
+  // Sin SESSION_SECRET no se puede firmar la cookie: cortamos ANTES de crear
+  // el usuario para no dejar una cuenta registrada sin sesión.
+  if (!isSessionConfigured()) {
+    return NextResponse.json(
+      {
+        error:
+          "Auth no configurada en el servidor. Falta SESSION_SECRET.",
+      },
+      { status: 503 }
+    );
+  }
+
   // El demo user (WU1/1.2) se siembra en dev desde el primer POST — si
   // DEMO_USER_PASSWORD está en env, existe para probar sin registrarse.
   await ensureDemoUser();

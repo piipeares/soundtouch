@@ -5,6 +5,8 @@ import {
   SESSION_MAX_AGE,
   createSessionToken,
   getSession,
+  isAdminAuthConfigured,
+  isSessionConfigured,
   verifyCredentials,
 } from "@/lib/auth";
 
@@ -38,6 +40,18 @@ export async function GET() {
  * firmada admin_session (httpOnly, sameSite strict, secure en prod, 24h).
  */
 export async function POST(request: NextRequest) {
+  // Fail-fast en el borde (no en module load): si el deploy no tiene las env
+  // vars, el sitio sigue funcionando y el login devuelve un 503 explícito.
+  if (!isAdminAuthConfigured() || !isSessionConfigured()) {
+    return NextResponse.json(
+      {
+        error:
+          "Auth no configurada en el servidor. Definí ADMIN_EMAIL, ADMIN_PASSWORD y SESSION_SECRET.",
+      },
+      { status: 503 }
+    );
+  }
+
   let body: unknown;
   try {
     body = await request.json();

@@ -30,29 +30,60 @@ export interface SessionPayload {
   exp: number;
 }
 
-// Credenciales y secreto SOLO desde env, nunca en source. Fail-fast en
-// module load: si faltan, el server no arranca con un admin roto.
-function readEnv(): {
-  adminEmail: string;
-  adminPassword: string;
-  sessionSecret: string;
-} {
-  const adminEmail = process.env.ADMIN_EMAIL;
-  const adminPassword = process.env.ADMIN_PASSWORD;
-  const sessionSecret = process.env.SESSION_SECRET;
-  if (!adminEmail || !adminPassword || !sessionSecret) {
-    throw new Error(
-      "Auth no configurada: definí ADMIN_EMAIL, ADMIN_PASSWORD y SESSION_SECRET " +
-        "en .env.local (ver .env.example)."
+// Credenciales y secreto SOLO desde env, nunca en source.
+//
+// La validación es LAZY a propósito: `next build` importa los módulos de las
+// rutas que usan auth, y un throw en module load rompe el build completo
+// cuando los secretos todavía no están cargados (p. ej. el primer deploy en
+// Vercel). Validamos en el borde real —login y firma/verificación de sesión—
+// así el sitio público buildea y deploya igual, y el admin devuelve 503 con
+// un mensaje claro hasta que se configuren las variables.
+export class AuthConfigError extends Error {
+  constructor(missing: string) {
+    super(
+      `Auth no configurada: falta ${missing}. Definí las variables en Vercel → ` +
+        "Settings → Environment Variables (o en .env.local para desarrollo)."
     );
+    this.name = "AuthConfigError";
   }
-  return { adminEmail, adminPassword, sessionSecret };
 }
 
-const { adminEmail, adminPassword, sessionSecret } = readEnv();
+let cachedSessionSecret: string | null = null;
+let cachedAdminCredentials: { email: string; password: string } | null = null;
+
+function getSessionSecret(): string {
+  if (cachedSessionSecret) return cachedSessionSecret;
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) throw new AuthConfigError("SESSION_SECRET");
+  cachedSessionSecret = secret;
+  return secret;
+}
+
+function getAdminCredentials(): { email: string; password: string } {
+  if (cachedAdminCredentials) return cachedAdminCredentials;
+  const email = process.env.ADMIN_EMAIL;
+  const password = process.env.ADMIN_PASSWORD;
+  if (!email || !password) {
+    throw new AuthConfigError("ADMIN_EMAIL y ADMIN_PASSWORD");
+  }
+  cachedAdminCredentials = { email, password };
+  return cachedAdminCredentials;
+}
+
+/** ¿Están las credenciales de admin? Permite responder 503 en vez de 500. */
+export function isAdminAuthConfigured(): boolean {
+  return Boolean(process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD);
+}
+
+/** ¿Está el secreto de sesión? Sin él no se puede firmar ni verificar. */
+export function isSessionConfigured(): boolean {
+  return Boolean(process.env.SESSION_SECRET);
+}
 
 function sign(encodedPayload: string): string {
-  return createHmac("sha256", sessionSecret).update(encodedPayload).digest("hex");
+  return createHmac("sha256", getSessionSecret())
+    .update(encodedPayload)
+    .digest("hex");
 }
 
 /** Comparación en tiempo constante (longitud fija de hex SHA-256 = 64). */
@@ -94,7 +125,17 @@ export function createSessionToken(email: string, role: SessionRole = "admin"): 
 export function verifySessionToken(token: string): SessionPayload | null {
   const [encoded, signature] = token.split(".");
   if (!encoded || !signature) return null;
-  if (!safeEqualHex(signature, sign(encoded))) return null; // forjada/temperada
+
+  let expectedSignature: string;
+  try {
+    expectedSignature = sign(encoded);
+  } catch (error) {
+    // Sin SESSION_SECRET no existe sesión válida posible: tratamos la cookie
+    // como anónima en lugar de tumbar páginas públicas con un 500.
+    if (error instanceof AuthConfigError) return null;
+    throw error;
+  }
+  if (!safeEqualHex(signature, expectedSignature)) return null; // forjada/temperada
 
   let payload: Record<string, unknown>;
   try {
@@ -120,9 +161,8 @@ export function verifySessionToken(token: string): SessionPayload | null {
  * comparación en tiempo constante (no filtra cuál campo falló).
  */
 export function verifyCredentials(email: string, password: string): boolean {
-  return (
-    safeEqual(email, adminEmail) && safeEqual(password, adminPassword)
-  );
+  const admin = getAdminCredentials();
+  return safeEqual(email, admin.email) && safeEqual(password, admin.password);
 }
 
 async function readSessionCookie(cookieName: string): Promise<SessionPayload | null> {
