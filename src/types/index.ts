@@ -44,6 +44,11 @@ export interface Instrument {
   discountPercentage?: number;
   /** Override explícito para el motor (útil en instrumentos conceptuales). */
   fineType?: InstrumentFineType;
+  /**
+   * Muestra de audio local (por ejemplo `/audio/instruments/bass.ogg`).
+   * Si falta, la ficha no muestra reproductor.
+   */
+  audio?: string;
   /** Rasgos sonoros explícitos; si existen, reemplazan la inferencia por texto. */
   traits?: string[];
 }

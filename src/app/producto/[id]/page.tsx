@@ -4,6 +4,7 @@ import { ArrowLeft, MessageCircle, Check } from "lucide-react";
 import { getInstrumentById } from "@/lib/store/instruments";
 import { generateWhatsAppLink } from "@/config/business";
 import InstrumentImage from "@/components/product/InstrumentImage";
+import InstrumentAudio from "@/components/product/InstrumentAudio";
 import Price from "@/components/product/Price";
 import FavoriteButton from "@/components/product/FavoriteButton";
 import TrackView from "@/components/product/TrackView";
@@ -113,6 +114,18 @@ export default async function ProductPage({ params }: ProductPageProps) {
               discountPercentage={instrument.discountPercentage}
             />
           </div>
+
+          {/* Muestra de audio */}
+          {instrument.audio && (
+            <div className="mt-6">
+              <InstrumentAudio
+                src={instrument.audio}
+                title={instrument.name}
+                variant="detail"
+                label={`Escuchá cómo suena: ${instrument.name}`}
+              />
+            </div>
+          )}
  
           {/* CTA Button */}
           <div className="mt-8">
