@@ -89,19 +89,29 @@ export interface InstrumentMatch {
   reason: string;
 }
 
+export interface SongOption {
+  title: string;
+  artist: string;
+  year: number | null;
+  genre: string;
+  estimated: boolean;
+}
+
 export interface RecommendResult {
   query: string;
-  matchedSong: {
-    title: string;
-    artist: string;
-    year: number | null;
-    genre: string;
-    estimated: boolean;
-  } | null;
+  matchedSong: SongOption | null;
+  /**
+   * Canciones alternativas para consultas parciales: si el usuario escribió
+   * una palabra o un artista sin coincidencia exacta, la UI ofrece al menos
+   * tres opciones para elegir.
+   */
+  songOptions: SongOption[];
   detectedGenre: string;
   confidence: number;
   summary: string;
   recommendations: InstrumentMatch[];
+  /** true cuando la canción/artista coincidió exacto (no aproximado). */
+  exactMatch: boolean;
   /** true cuando no hubo match de canción ni de género. */
   fallback: boolean;
 }
@@ -1470,58 +1480,125 @@ interface SongMatch {
   score: number;
 }
 
-function findBestSong(
-  query: string,
-  songs: SongProfile[]
-): SongMatch | null {
-  const q = normalize(query);
-  if (!q) return null;
+function scoreSong(song: SongProfile, q: string, qTokens: string[]): number {
+  const title = normalize(song.title);
+  const artist = normalize(song.artist);
+  let score = 0;
 
-  const qTokens = q.split(" ").filter((token) => token.length > 2);
-  let best: SongMatch | null = null;
-
-  for (const song of songs) {
-    const title = normalize(song.title);
-    const artist = normalize(song.artist);
-    let score = 0;
-
-    // Artista exacto gana sobre título exacto: "Nirvana" o "Daft Punk" son
-    // consultas de banda, no canciones homónimas de otro artista.
-    if (artist === q) {
-      score = 100;
-    } else if (title === q) {
-      score = 98;
-    } else if (
-      title.length > 0 &&
-      (title.includes(q) || (q.length >= 6 && q.includes(title)))
-    ) {
-      score = 90;
-    } else {
-      // Con miles de canciones, un solo token ("love", "night") generaría
-      // matches falsos. Solo usamos coincidencia parcial con 2+ tokens.
-      if (qTokens.length >= 2) {
-        const haystack = `${title} ${artist}`;
-        const hits = qTokens.filter((token) => haystack.includes(token)).length;
-        score = Math.round((hits / qTokens.length) * 70);
-      }
-
-      if (q.length >= 3) {
-        const artistTokens = artist.split(" ");
-        if (
-          artist.startsWith(`${q} `) ||
-          artistTokens.includes(q)
-        ) {
-          score = Math.max(score, 78);
-        }
-      }
+  // Artista exacto gana sobre título exacto: "Nirvana" o "Daft Punk" son
+  // consultas de banda, no canciones homónimas de otro artista.
+  if (artist === q) {
+    score = 100;
+  } else if (title === q) {
+    score = 98;
+  } else if (
+    title.length >= 4 &&
+    (title.includes(q) || (q.length >= 6 && q.includes(title)))
+  ) {
+    score = 90;
+  } else {
+    // Con miles de canciones, un solo token ("love", "night") generaría
+    // matches falsos. Solo usamos coincidencia parcial con 2+ tokens.
+    if (qTokens.length >= 2) {
+      const haystack = `${title} ${artist}`;
+      const hits = qTokens.filter((token) => haystack.includes(token)).length;
+      score = Math.round((hits / qTokens.length) * 70);
     }
 
-    if (!best || score > best.score) {
-      best = { song, score };
+    if (q.length >= 3) {
+      const artistTokens = artist.split(" ");
+      if (artist.startsWith(`${q} `) || artistTokens.includes(q)) {
+        score = Math.max(score, 78);
+      }
     }
   }
 
-  return best && best.score >= 40 ? best : null;
+  return score;
+}
+
+function baseTitle(title: string): string {
+  // Cortamos la versión ("- Remaster", "– Live") antes de normalizar: normalize
+  // convierte los guiones en espacios y perdería el separador.
+  return normalize(title.split(/\s+[-–—]\s+/)[0]);
+}
+
+/** Todos los matches por encima del umbral, ordenados por afinidad. */
+function findSongMatches(
+  query: string,
+  songs: SongProfile[],
+  limit: number
+): SongMatch[] {
+  const q = normalize(query);
+  if (!q) return [];
+
+  const qTokens = q.split(" ").filter((token) => token.length > 2);
+  const matches: SongMatch[] = [];
+  const seen = new Set<string>();
+
+  for (const song of songs) {
+    const score = scoreSong(song, q, qTokens);
+    if (score < 40) continue;
+    // "Stairway to Heaven" y "Stairway to Heaven - Remaster" son la misma
+    // canción para el usuario: no gastamos una de las tres opciones.
+    const key = `${baseTitle(song.title)}|${normalize(song.artist)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    matches.push({ song, score });
+  }
+
+  matches.sort(
+    (a, b) =>
+      b.score - a.score ||
+      Number(Boolean(a.song.estimated)) - Number(Boolean(b.song.estimated)) ||
+      a.song.title.localeCompare(b.song.title)
+  );
+
+  return matches.slice(0, limit);
+}
+
+/**
+ * Completa la lista de opciones con canciones del mismo género cuando la
+ * búsqueda fue parcial ("stair", "zeppelin") y no hay suficientes matches.
+ * Así el usuario siempre ve al menos tres alternativas para elegir.
+ */
+function padSongOptions(
+  matches: SongMatch[],
+  songs: SongProfile[],
+  limit: number
+): SongMatch[] {
+  if (matches.length >= limit) return matches;
+
+  const genre = matches[0]?.song.genre;
+  if (!genre) return matches;
+
+  const used = new Set(
+    matches.map((match) => `${baseTitle(match.song.title)}|${normalize(match.song.artist)}`)
+  );
+
+  const pool = songs
+    .filter((song) => song.genre === genre)
+    .filter((song) => !used.has(`${baseTitle(song.title)}|${normalize(song.artist)}`))
+    // Conservamos el orden de la knowledge base: las curadas primero y, dentro
+    // de cada grupo, el orden icónico del catálogo (no alfabético).
+    .sort((a, b) => Number(Boolean(a.estimated)) - Number(Boolean(b.estimated)));
+
+  const padded = [...matches];
+  for (const song of pool) {
+    if (padded.length >= limit) break;
+    padded.push({ song, score: matches[0]?.score ?? 40 });
+  }
+
+  return padded;
+}
+
+function toSongOption(song: SongProfile): SongOption {
+  return {
+    title: song.title,
+    artist: song.artist,
+    year: song.year ?? null,
+    genre: GENRE_LABELS[song.genre],
+    estimated: song.estimated ?? false,
+  };
 }
 
 function detectExactGenre(query: string): GenreKey | null {
@@ -1664,11 +1741,13 @@ function emptyResult(query: string): RecommendResult {
   return {
     query,
     matchedSong: null,
+    songOptions: [],
     detectedGenre: "—",
     confidence: 0,
     summary:
       "Escribí una canción, un artista o un estilo para empezar. Por ejemplo: “Stairway to Heaven” o “blues”.",
     recommendations: [],
+    exactMatch: false,
     fallback: false,
   };
 }
@@ -1718,7 +1797,8 @@ export function recommendInstruments(
   // Si no, primero buscamos canción/artista: así "Daft Punk" no se detecta
   // como género punk. Recién después probamos keywords sueltas ("quiero rock").
   const exactGenre = detectExactGenre(cleaned);
-  const songMatch = exactGenre ? null : findBestSong(cleaned, songs);
+  const songMatches = exactGenre ? [] : findSongMatches(cleaned, songs, 3);
+  const songMatch = songMatches[0] ?? null;
   const genre = exactGenre ?? (songMatch ? songMatch.song.genre : detectGenre(cleaned));
   const genreProfile = genre ? GENRE_PROFILES[genre] : null;
 
@@ -1828,15 +1908,13 @@ export function recommendInstruments(
 
   return {
     query: cleaned,
-    matchedSong: songMatch
-      ? {
-          title: songMatch.song.title,
-          artist: songMatch.song.artist,
-          year: songMatch.song.year ?? null,
-          genre: GENRE_LABELS[songMatch.song.genre],
-          estimated: songMatch.song.estimated ?? false,
-        }
-      : null,
+    matchedSong: songMatch ? toSongOption(songMatch.song) : null,
+    songOptions: songMatch
+      ? (songMatch.score >= 98
+          ? songMatches
+          : padSongOptions(songMatches, songs, 3)
+        ).map((match) => toSongOption(match.song))
+      : [],
     detectedGenre: genreLabel,
     confidence,
     summary: buildSummary({
@@ -1847,6 +1925,7 @@ export function recommendInstruments(
       fallback,
     }),
     recommendations,
+    exactMatch: songMatch ? songMatch.score >= 98 : false,
     fallback,
   };
 }

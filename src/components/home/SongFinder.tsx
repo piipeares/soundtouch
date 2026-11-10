@@ -19,6 +19,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import InstrumentImage from "@/components/product/InstrumentImage";
+import InstrumentAudio from "@/components/product/InstrumentAudio";
 import { useCurrency } from "@/context/CurrencyContext";
 import { generateWhatsAppLink } from "@/config/business";
 import { formatPrice } from "@/lib/utils";
@@ -422,7 +423,14 @@ export default function SongFinder({ instruments }: SongFinderProps) {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.4 }}
                 >
-                  <ResultPanel result={result} currency={currency} />
+                  <ResultPanel
+                    result={result}
+                    currency={currency}
+                    onSelectSong={(title) => {
+                      setQuery(title);
+                      void runAnalysis(title);
+                    }}
+                  />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -440,12 +448,17 @@ export default function SongFinder({ instruments }: SongFinderProps) {
 function ResultPanel({
   result,
   currency,
+  onSelectSong,
 }: {
   result: RecommendResult;
   currency: "USD" | "ARS";
+  onSelectSong: (title: string) => void;
 }) {
-  const { matchedSong, detectedGenre, confidence, summary, recommendations, fallback } =
+  const { matchedSong, songOptions, exactMatch, detectedGenre, confidence, summary, recommendations, fallback } =
     result;
+
+  const options =
+    songOptions && songOptions.length >= 2 ? songOptions : [];
 
   const names = recommendations
     .map((recommendation) => recommendation.instrument.name)
@@ -504,6 +517,43 @@ function ResultPanel({
           {summary}
         </p>
       </div>
+
+      {/* Opciones de canción: al menos 3 alternativas cuando la búsqueda no
+          fue exacta, para que el usuario elija en vez de quedarse con la
+          primera aproximación del motor. */}
+      {options.length > 1 && (
+        <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+            {exactMatch
+              ? "Otras canciones que coinciden"
+              : "No encontramos una coincidencia exacta · elegí una opción"}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {options.map((option) => {
+              const active =
+                matchedSong?.title === option.title &&
+                matchedSong?.artist === option.artist;
+              return (
+                <button
+                  key={`${option.title}-${option.artist}`}
+                  type="button"
+                  onClick={() => onSelectSong(option.title)}
+                  aria-pressed={active}
+                  className={`group flex max-w-full items-center gap-2 rounded-full border px-3 py-2 text-left text-xs transition-colors ${
+                    active
+                      ? "border-brand-accent/60 bg-brand-accent/15 text-brand-accent"
+                      : "border-white/10 bg-white/[0.03] text-zinc-300 hover:border-brand-accent/50 hover:text-brand-accent"
+                  }`}
+                >
+                  <Music size={13} aria-hidden="true" className="shrink-0" />
+                  <span className="truncate font-semibold">{option.title}</span>
+                  <span className="shrink-0 text-zinc-500">{option.artist}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Tarjetas */}
       <div
@@ -594,6 +644,16 @@ function MatchCard({
       {/* Contenido */}
       <div className="flex flex-1 flex-col p-5">
         <p className="text-sm leading-relaxed text-zinc-400">{reason}</p>
+
+        {instrument.audio && (
+          <div className="mt-4">
+            <InstrumentAudio
+              src={instrument.audio}
+              title={instrument.name}
+              label="Muestra de audio"
+            />
+          </div>
+        )}
 
         <div className="mt-auto flex items-end justify-between gap-3 pt-5">
           <div className="min-w-0">
