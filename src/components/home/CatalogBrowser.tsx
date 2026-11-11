@@ -14,13 +14,13 @@ interface CatalogBrowserProps {
 }
 
 /** Instrumentos visibles antes de tocar "Ver más". */
-const INITIAL_COUNT = 10;
+const INITIAL_COUNT = 8;
 /** Cuántos se suman en cada click. */
 const PAGE_SIZE = 14;
 
 /**
  * Estado de paginación atado a la combinación de filtros: si el usuario cambia
- * de tab, de categoría o de búsqueda, la lista vuelve a empezar en 10. Se
+ * de tab, de categoría o de búsqueda, la lista vuelve a empezar en 8. Se
  * resuelve en render (patrón recomendado por React) en vez de con un efecto,
  * para no encadenar renders.
  */
@@ -63,7 +63,7 @@ export default function CatalogBrowser({ instruments }: CatalogBrowserProps) {
 
   const displayInstruments = activeTab === "ofertas" ? onSale : categoryFiltered;
 
-  // Paginación: 10 de entrada y 14 por click, reiniciada al cambiar de filtro.
+  // Paginación: 8 de entrada y 14 por click, reiniciada al cambiar de filtro.
   const filterKey = `${activeTab}|${selectedCategory}|${searchQuery}`;
   const [listState, setListState] = useState<ListState>({
     key: filterKey,
