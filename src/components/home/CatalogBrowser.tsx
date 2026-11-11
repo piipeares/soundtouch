@@ -13,6 +13,22 @@ interface CatalogBrowserProps {
   instruments: Instrument[];
 }
 
+/** Instrumentos visibles antes de tocar "Ver más". */
+const INITIAL_COUNT = 10;
+/** Cuántos se suman en cada click. */
+const PAGE_SIZE = 14;
+
+/**
+ * Estado de paginación atado a la combinación de filtros: si el usuario cambia
+ * de tab, de categoría o de búsqueda, la lista vuelve a empezar en 10. Se
+ * resuelve en render (patrón recomendado por React) en vez de con un efecto,
+ * para no encadenar renders.
+ */
+interface ListState {
+  key: string;
+  count: number;
+}
+
 /**
  * Isla client del catálogo (design D3 / task 5.1): recibe los instrumentos
  * ya resueltos en el server component (SSR/SSG) y solo queda interactiva en
@@ -46,6 +62,24 @@ export default function CatalogBrowser({ instruments }: CatalogBrowserProps) {
   );
 
   const displayInstruments = activeTab === "ofertas" ? onSale : categoryFiltered;
+
+  // Paginación: 10 de entrada y 14 por click, reiniciada al cambiar de filtro.
+  const filterKey = `${activeTab}|${selectedCategory}|${searchQuery}`;
+  const [listState, setListState] = useState<ListState>({
+    key: filterKey,
+    count: INITIAL_COUNT,
+  });
+
+  if (listState.key !== filterKey) {
+    setListState({ key: filterKey, count: INITIAL_COUNT });
+  }
+
+  const visibleInstruments = displayInstruments.slice(0, listState.count);
+  const hiddenCount = displayInstruments.length - visibleInstruments.length;
+
+  const showMore = () => {
+    setListState((prev) => ({ key: prev.key, count: prev.count + PAGE_SIZE }));
+  };
 
   // Solo categorías con ≥1 instrumento (spec product-catalog: las vacías no se listan)
   const categories = activeCategories(instruments);
@@ -120,15 +154,37 @@ export default function CatalogBrowser({ instruments }: CatalogBrowserProps) {
       {/* Catálogo */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {displayInstruments.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {displayInstruments.map((instrument, index) => (
-              <ProductCard
-                key={instrument.id}
-                instrument={instrument}
-                index={index}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {visibleInstruments.map((instrument, index) => (
+                <ProductCard
+                  key={instrument.id}
+                  instrument={instrument}
+                  index={index}
+                />
+              ))}
+            </div>
+
+            <div className="mt-10 flex flex-col items-center gap-3">
+              <p className="text-sm text-zinc-500">
+                Mostrando {visibleInstruments.length} de{" "}
+                {displayInstruments.length} instrumentos
+              </p>
+
+              {hiddenCount > 0 && (
+                <button
+                  type="button"
+                  onClick={showMore}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-semibold text-foreground transition-colors hover:border-brand-accent/60 hover:text-brand-accent"
+                >
+                  Ver más
+                  <span className="text-zinc-500">
+                    (+{Math.min(PAGE_SIZE, hiddenCount)})
+                  </span>
+                </button>
+              )}
+            </div>
+          </>
         ) : (
           <div className="text-center py-16">
             <p className="text-zinc-400 text-lg">

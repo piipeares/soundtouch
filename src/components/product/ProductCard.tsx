@@ -32,13 +32,13 @@ export default function ProductCard({ instrument, index }: ProductCardProps) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.2 }}
       whileHover={{ y: -4 }}
-      transition={{ duration: 0.4, delay: index * 0.05, ease: "easeOut" }}
-      className="group card-surface overflow-hidden rounded-2xl shadow-card transition-shadow duration-300 hover:shadow-lifted hover:ring-1 hover:ring-brand-accent/40"
+      transition={{ duration: 0.4, delay: Math.min(index, 7) * 0.05, ease: "easeOut" }}
+      className="group card-surface flex h-full flex-col overflow-hidden rounded-2xl shadow-card transition-shadow duration-300 hover:shadow-lifted hover:ring-1 hover:ring-brand-accent/40"
     >
       {/* Image Container (portrait) */}
       <Link
         href={`/producto/${instrument.id}`}
-        className="relative block aspect-[4/5] overflow-hidden bg-surface-raised"
+        className="relative block aspect-[4/5] shrink-0 overflow-hidden bg-surface-raised"
         aria-label={instrument.name}
       >
         <div className="absolute inset-0 transition-transform duration-500 group-hover:scale-105">
@@ -70,12 +70,12 @@ export default function ProductCard({ instrument, index }: ProductCardProps) {
       </Link>
 
       {/* Content */}
-      <div className="p-5">
+      <div className="flex flex-1 flex-col p-5">
         <div className="mb-2 flex items-start justify-between gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-brand-accent">
+          <span className="min-w-0 truncate text-xs font-semibold uppercase tracking-wider text-brand-accent">
             {instrument.brand}
           </span>
-          <span className="text-xs text-zinc-500">
+          <span className="shrink-0 whitespace-nowrap text-xs text-zinc-500">
             {CATEGORY_LABELS[instrument.category]}
           </span>
         </div>
@@ -86,7 +86,9 @@ export default function ProductCard({ instrument, index }: ProductCardProps) {
           </h3>
         </Link>
 
-        <p className="mt-2 line-clamp-2 text-sm text-zinc-400">
+        {/* Altura fija de dos líneas: todas las cards miden lo mismo aunque la
+            descripción sea más corta. */}
+        <p className="mt-2 line-clamp-2 min-h-[2.5rem] text-sm text-zinc-400">
           {instrument.description}
         </p>
 
@@ -107,20 +109,21 @@ export default function ProductCard({ instrument, index }: ProductCardProps) {
           </span>
         </div>
 
-        {/* Precio */}
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <div className="flex min-w-0 flex-col">
+        {/* Precio + contacto. Van apilados: en pesos el precio ocupa mucho
+            ancho y en una fila se pisaba con el botón. */}
+        <div className="mt-auto pt-4">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             {hasOffer ? (
               <>
-                <span className="text-lg font-bold text-foreground">
+                <span className="text-xl font-bold tabular-nums text-foreground">
                   {formatPrice(instrument.offerPrice!, currency)}
                 </span>
-                <span className="text-sm text-zinc-500 line-through">
+                <span className="text-sm tabular-nums text-zinc-500 line-through">
                   {formatPrice(instrument.price, currency)}
                 </span>
               </>
             ) : (
-              <span className="text-xl font-bold text-foreground">
+              <span className="text-xl font-bold tabular-nums text-foreground">
                 {formatPrice(instrument.price, currency)}
               </span>
             )}
@@ -132,7 +135,7 @@ export default function ProductCard({ instrument, index }: ProductCardProps) {
             )}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-brand-accent px-4 py-2 text-sm font-semibold text-brand-black transition-colors hover:bg-brand-accent-bright"
+            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-accent px-4 py-2.5 text-sm font-semibold text-brand-black transition-colors hover:bg-brand-accent-bright"
           >
             <MessageCircle size={16} aria-hidden="true" />
             Contactar
